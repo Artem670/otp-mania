@@ -6,7 +6,7 @@ import type { Role } from './data/types';
 import { match, useRouter } from './lib/router';
 import { AppLayout } from './components/layout';
 import { OtpLogo } from './components/brand';
-import { Button, Empty, Field, Modal, PageSkeleton, Skeleton, useAction, useToast } from './components/ui';
+import { Button, Empty, Field, Modal, PageSkeleton, PasswordInput, Skeleton, useAction, useToast } from './components/ui';
 import { Alert, Lock } from './components/icons';
 import Login from './pages/Login';
 import Profile from './pages/employee/Profile';
@@ -102,7 +102,7 @@ export default function App() {
     api.init().then(() => {
       setState('ready');
       const n = api.takeNotice();
-      if (n) toast(n.includes('подтверждена') ? 'success' : 'error', n);
+      if (n && n.includes('подтверждена')) toast('success', n);
       if (api.takeRecovery()) setRecovery(true);
     }).catch(() => setState('error'));
   };
@@ -131,7 +131,7 @@ function NewPassword({ onDone }: { onDone: () => void }) {
   };
   return (
     <Modal open onClose={onDone} title="Новый пароль" subtitle="Вы перешли по ссылке для восстановления. Задайте новый пароль" footer={<Button loading={busy === 'pw'} onClick={save}>Сохранить пароль</Button>}>
-      <Field label="Новый пароль" error={err} htmlFor="newpw"><input id="newpw" type="password" className={err ? 'input err' : 'input'} autoComplete="new-password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(null); }} /></Field>
+      <Field label="Новый пароль" error={err} hint={<span style={{ color: pw.length >= 8 ? 'var(--green)' : undefined }}>{pw.length >= 8 ? '✓ ' : ''}Минимум 8 символов</span>} htmlFor="newpw"><PasswordInput id="newpw" invalid={!!err} autoComplete="new-password" value={pw} onChange={(v) => { setPw(v); setErr(null); }} /></Field>
     </Modal>
   );
 }

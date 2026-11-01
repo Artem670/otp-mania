@@ -27,5 +27,5 @@ try {
 } catch { /* старый браузер */ }
 
 export function useTheme(): Theme {
-  return useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, currentTheme, currentTheme);
+  return useSyncExternalStore((l: () => void) => { listeners.add(l); return () => listeners.delete(l); }, currentTheme, currentTheme);
 }

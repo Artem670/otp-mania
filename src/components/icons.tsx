@@ -9,7 +9,7 @@ export {
   LuUpload as Upload, LuImage as ImageIcon, LuTriangleAlert as Alert, LuInfo as Info, LuLoaderCircle as Loader,
   LuCoins as Coins, LuAward as Award, LuMedal as Medal, LuCrown as Crown, LuTrendingUp as TrendingUp,
   LuTrendingDown as TrendingDown, LuActivity as Activity, LuWallet as Wallet, LuMenu as Menu, LuBuilding2 as Building,
-  LuFileText as FileText, LuEye as Eye, LuPencil as Pencil, LuSend as Send, LuMessageSquare as Message, LuStar as Star,
+  LuFileText as FileText, LuEye as Eye, LuEyeOff as EyeOff, LuPencil as Pencil, LuSend as Send, LuMessageSquare as Message, LuStar as Star,
   LuClock as Clock, LuMapPin as MapPin, LuArrowRight as ArrowRight, LuRotateCcw as Reset, LuScale as Scale,
   LuClipboardCheck as ClipboardCheck, LuListChecks as ListChecks, LuBan as Ban, LuCircleCheck as CircleCheck,
   LuCircleX as CircleX, LuChartPie as PieIcon, LuChartColumn as BarIcon, LuKeyRound as Key, LuMail as Mail,

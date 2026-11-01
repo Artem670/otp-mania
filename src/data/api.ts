@@ -36,6 +36,7 @@ const isPositiveInt = (n: number) => Number.isFinite(n) && n > 0 && Math.floor(n
 
 let recoveryPending = false;
 let authNotice: string | null = null;
+let loginError: ApiError | null = null;
 
 /** Переход в живой режим: загрузка общей базы и привязка профиля к аккаунту. */
 async function enterLive() {
@@ -74,7 +75,7 @@ export const api = {
         const link = await auth.fromUrlHash();
         if (link?.type === 'recovery') recoveryPending = true;
         if (link?.type === 'signup' || link?.type === 'magiclink') authNotice = 'Почта подтверждена. Добро пожаловать!';
-      } catch (e) { authNotice = (e as Error).message; }
+      } catch (e) { authNotice = (e as Error).message; loginError = e instanceof ApiError ? e : null; }
       if (await getSession()) {
         try { await enterLive(); return getState(); } catch (e) { authNotice = (e as Error).message; await auth.signOut(); leaveLive(); }
       }
@@ -84,6 +85,8 @@ export const api = {
   },
   /** Сообщение после перехода по ссылке из письма (показывается один раз). */
   takeNotice() { const n = authNotice; authNotice = null; return n; },
+  /** Ошибка ссылки из письма для формы входа (с подсказкой). */
+  takeLoginError() { const e = loginError; loginError = null; return e; },
   takeRecovery() { const r = recoveryPending; recoveryPending = false; return r; },
   async departmentsForSignup() {
     if (!remoteEnabled) return DEPTS_PUBLIC;
@@ -96,7 +99,7 @@ export const api = {
   /* ---------- Авторизация ---------- */
   async login(email: string, password: string) {
     const e = email.trim().toLowerCase();
-    if (!e || !password) fail('Введите почту и пароль');
+    if (!e || !password) throw new ApiError('Введите почту и пароль', 'invalid_credentials');
     if (remoteEnabled && !e.endsWith('@mania.demo')) {
       await auth.signIn(e, password);
       return enterLive();
@@ -104,7 +107,7 @@ export const api = {
     if (getMode() !== 'demo') loadState();
     await wait();
     const u = getState().users.find((x) => x.email === e);
-    if (!u || u.password !== password) fail(remoteEnabled ? 'Неверная почта или пароль' : 'Неверная почта или пароль. Регистрация заработает после подключения базы');
+    if (!u || u.password !== password) throw new ApiError('Неверная почта или пароль', 'invalid_credentials', e.endsWith('@mania.demo') ? `У демо-аккаунтов пароль «${'demo'}». Или нажмите кнопку демо-входа ниже.` : 'Регистрация заработает после подключения базы данных. Пока войдите через демо ниже.');
     await commit((db) => { db.sessionUserId = u!.id; touch(db, u!.id); });
     return u!;
   },
@@ -126,6 +129,12 @@ export const api = {
     const e = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) fail('Проверьте адрес почты');
     await auth.recover(e);
+  },
+  async resendConfirmation(email: string) {
+    if (!remoteEnabled) fail('Письма заработают после подключения базы');
+    const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new ApiError('Проверьте адрес почты', 'invalid_email');
+    await auth.resend(e);
   },
   async setNewPassword(password: string) {
     if (password.length < 8) fail('Пароль: минимум 8 символов');

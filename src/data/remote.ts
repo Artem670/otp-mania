@@ -9,7 +9,7 @@ export const SUPABASE_URL = (typeof __SUPABASE_URL__ !== 'undefined' ? __SUPABAS
 export const SUPABASE_ANON_KEY = typeof __SUPABASE_ANON_KEY__ !== 'undefined' ? __SUPABASE_ANON_KEY__ : '';
 export const remoteEnabled = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-import { ApiError } from './errors';
+import { ApiError, type ErrorCode } from './errors';
 export { ApiError as RemoteError };
 const RemoteError = ApiError;
 
@@ -33,20 +33,28 @@ export const siteUrl = () => {
   try { return window.location.origin + window.location.pathname; } catch { return ''; }
 };
 
-const ERRORS: [RegExp, string][] = [
-  [/invalid login credentials/i, 'Неверная почта или пароль'],
-  [/email not confirmed/i, 'Почта ещё не подтверждена. Откройте письмо и перейдите по ссылке'],
-  [/already registered|already been registered|user_already_exists/i, 'Эта почта уже зарегистрирована. Войдите или восстановите пароль'],
-  [/password should be at least|weak_password/i, 'Пароль слишком простой: минимум 8 символов'],
-  [/rate limit|too many|over_email_send_rate_limit/i, 'Слишком много попыток. Подождите минуту и попробуйте снова'],
-  [/unable to validate email|invalid email|email_address_invalid/i, 'Проверьте адрес почты'],
-  [/jwt expired|invalid jwt|refresh token/i, 'Сессия истекла. Войдите заново'],
-  [/row-level security|permission denied|42501/i, 'Недостаточно прав для этого действия'],
-  [/Только администратор/i, 'Только администратор может менять роли и настройки'],
+type Mapped = { code: ErrorCode; text: string; hint?: string | ((raw: string) => string) };
+const ERRORS: [RegExp, Mapped][] = [
+  [/email not confirmed|email_not_confirmed/i, { code: 'email_not_confirmed', text: 'Почта ещё не подтверждена', hint: 'Откройте письмо от ОТП Мании и перейдите по ссылке. Письма нет? Проверьте папку «Спам» или отправьте письмо ещё раз.' }],
+  [/invalid login credentials|invalid_credentials|invalid_grant/i, { code: 'invalid_credentials', text: 'Неверная почта или пароль', hint: 'Проверьте раскладку клавиатуры и Caps Lock. Если не помните пароль, восстановите его. Если ещё не регистрировались, создайте аккаунт.' }],
+  [/already registered|already been registered|user_already_exists|email_exists/i, { code: 'user_exists', text: 'Эта почта уже зарегистрирована', hint: 'Войдите с этой почтой. Если не помните пароль, восстановите его.' }],
+  [/same_password|should be different/i, { code: 'same_password', text: 'Новый пароль совпадает со старым', hint: 'Придумайте другой пароль.' }],
+  [/password should be at least|weak_password|password is too weak/i, { code: 'weak_password', text: 'Пароль слишком простой', hint: 'Нужно минимум 8 символов. Лучше добавить цифры и буквы разного регистра.' }],
+  [/email rate limit|over_email_send_rate_limit/i, { code: 'email_rate_limit', text: 'Лимит писем на этот час исчерпан', hint: (raw) => { const n = raw.match(/after (\d+) seconds?/i)?.[1]; return n ? `Повторить можно через ${n} сек.` : 'Supabase отправляет ограниченное число писем в час. Попробуйте позже. Администратору: лимит меняется в Authentication → Rate Limits.'; } }],
+  [/rate limit|too many|over_request_rate_limit|for security purposes/i, { code: 'rate_limit', text: 'Слишком много попыток подряд', hint: (raw) => { const n = raw.match(/after (\d+) seconds?/i)?.[1]; return n ? `Подождите ${n} сек. и попробуйте снова.` : 'Подождите минуту и попробуйте снова.'; } }],
+  [/email_address_not_authorized|not authorized to send/i, { code: 'email_not_authorized', text: 'Письмо на этот адрес не отправлено', hint: 'Встроенная почта Supabase пишет только участникам проекта. Администратору: подключите свою почту в Authentication → Emails → SMTP Settings.' }],
+  [/error sending|smtp|sending .*email|mail.*fail/i, { code: 'email_send', text: 'Не удалось отправить письмо', hint: 'Почтовый сервер не принял письмо. Администратору: проверьте Authentication → Emails → SMTP Settings (адрес, порт, пароль приложения).' }],
+  [/unable to validate email|invalid email|email_address_invalid|invalid format/i, { code: 'invalid_email', text: 'Некорректный адрес почты', hint: 'Проверьте, нет ли опечатки или лишнего пробела.' }],
+  [/signups? not allowed|signup_disabled|email_provider_disabled/i, { code: 'signup_disabled', text: 'Регистрация сейчас выключена', hint: 'Администратору: включите вход по почте в Authentication → Sign In / Providers → Email.' }],
+  [/jwt expired|invalid jwt|refresh token|session_not_found|bad_jwt/i, { code: 'session', text: 'Сессия истекла', hint: 'Войдите заново.' }],
+  [/otp_expired|link.*expired|token has expired|flow_state/i, { code: 'link_expired', text: 'Ссылка из письма устарела', hint: 'Ссылка работает один раз и ограниченное время. Запросите новую: «Забыли пароль?» или «Отправить письмо ещё раз».' }],
+  [/row-level security|permission denied|42501/i, { code: 'forbidden', text: 'Недостаточно прав для этого действия' }],
+  [/Только администратор/i, { code: 'forbidden', text: 'Только администратор может менять роли и настройки' }],
 ];
-function humanize(raw: string) {
-  for (const [re, text] of ERRORS) if (re.test(raw)) return text;
-  return raw || 'Сервер не ответил. Проверьте интернет и попробуйте снова';
+export function toError(raw: string, status?: number): ApiError {
+  for (const [re, m] of ERRORS) if (re.test(raw)) return new RemoteError(m.text, m.code, typeof m.hint === 'function' ? m.hint(raw) : m.hint);
+  if (status && status >= 500) return new RemoteError('Сервер базы данных временно недоступен', 'server', 'Попробуйте через минуту. Если не помогает, проверьте в панели Supabase, что проект не на паузе.');
+  return new RemoteError(raw ? `Ошибка сервера: ${raw}` : 'Сервер не ответил', 'unknown', 'Попробуйте ещё раз. Если повторяется, сообщите администратору текст ошибки.');
 }
 
 async function call<T>(path: string, init: RequestInit & { auth?: boolean } = {}): Promise<T> {
@@ -59,14 +67,14 @@ async function call<T>(path: string, init: RequestInit & { auth?: boolean } = {}
   try {
     res = await fetch(SUPABASE_URL + path, { ...init, headers });
   } catch {
-    throw new RemoteError('Нет связи с сервером. Проверьте интернет');
+    throw new RemoteError('Нет связи с сервером', 'network', 'Проверьте интернет. Если он есть, сервер может блокировать сеть (например, корпоративная сеть или без VPN). Демо-вход работает без сервера.');
   }
   const text = await res.text();
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   if (!res.ok) {
     const raw = body && typeof body === 'object' ? [body.error_code, body.code, body.msg, body.message, body.error_description, body.error, body.hint].filter(Boolean).join(' ') : String(body ?? res.status);
-    throw new RemoteError(humanize(raw));
+    throw toError(raw, res.status);
   }
   return body as T;
 }
@@ -103,6 +111,10 @@ export const auth = {
   async recover(email: string) {
     await call(`/auth/v1/recover?redirect_to=${encodeURIComponent(siteUrl())}`, { method: 'POST', auth: false, body: JSON.stringify({ email }) });
   },
+  /** Повторно отправляет письмо с подтверждением почты. */
+  async resend(email: string) {
+    await call(`/auth/v1/resend?redirect_to=${encodeURIComponent(siteUrl())}`, { method: 'POST', auth: false, body: JSON.stringify({ type: 'signup', email }) });
+  },
   async updatePassword(password: string) {
     await call('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password }) });
   },
@@ -117,14 +129,17 @@ export const auth = {
     if (!h.includes('access_token=') && !h.includes('error_description=')) return null;
     const p = new URLSearchParams(h);
     try { window.history.replaceState(null, '', window.location.pathname + '#/'); } catch { /* песочница */ }
-    if (p.get('error_description')) throw new RemoteError(humanize(p.get('error_description')!) + '. Ссылка могла устареть, запросите новую');
+    if (p.get('error_description') || p.get('error_code')) {
+      const e = toError([p.get('error_code'), p.get('error_description')].filter(Boolean).join(' '));
+      throw e.code === 'unknown' ? new RemoteError('Ссылка из письма не сработала', 'link_expired', 'Возможно, она устарела или уже использована. Запросите новую.') : e;
+    }
     const access_token = p.get('access_token')!;
     let user: AuthUser;
     try {
       const r = await fetch(SUPABASE_URL + '/auth/v1/user', { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${access_token}` } });
       if (!r.ok) throw new Error();
       user = await r.json();
-    } catch { throw new RemoteError('Ссылка из письма устарела. Войдите или запросите новую'); }
+    } catch { throw new RemoteError('Ссылка из письма устарела', 'link_expired', 'Ссылка работает один раз и ограниченное время. Войдите или запросите новую.'); }
     store({ access_token, refresh_token: p.get('refresh_token') ?? '', expires_at: Math.floor(Date.now() / 1000) + Number(p.get('expires_in') ?? 3600), user });
     return { type: p.get('type') ?? 'signup' };
   },

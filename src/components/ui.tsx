@@ -1,6 +1,6 @@
 import { ProductIllustration } from './productArt';
 import { toggleTheme, useTheme } from '../lib/theme';
-import { Sun, Moon } from './icons';
+import { Sun, Moon, Eye, EyeOff, Key } from './icons';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type ButtonHTMLAttributes } from 'react';
 import { cx, initials, fmt } from '../lib/utils';
 import { Alert, CircleCheck, Info, Loader, X, Coins as CoinsIcon } from './icons';
@@ -49,7 +49,7 @@ export function useAction() {
       if (success) toast('success', typeof success === 'function' ? success(r) : success);
       return r;
     } catch (e) {
-      toast('error', e instanceof ApiError ? e.message : 'Что-то пошло не так. Попробуйте ещё раз');
+      toast('error', e instanceof ApiError ? (e.hint ? `${e.message}. ${e.hint}` : e.message) : 'Что-то пошло не так. Попробуйте ещё раз');
       if (!(e instanceof ApiError)) console.error(e);
       return undefined;
     } finally {
@@ -248,6 +248,26 @@ export function Confirm({ open, title, text, confirmText, danger, loading, onCon
     <Modal open={open} onClose={onClose} title={title} footer={<><Button variant="secondary" onClick={onClose}>Отмена</Button><Button variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmText}</Button></>}>
       <div className="text-2">{text}</div>
     </Modal>
+  );
+}
+
+/** Поле пароля: кнопка «показать пароль» и предупреждение о включённом Caps Lock. */
+export function PasswordInput({ id, value, onChange, autoComplete, invalid, placeholder }: { id: string; value: string; onChange: (v: string) => void; autoComplete: string; invalid?: boolean; placeholder?: string }) {
+  const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const onKey = (e: { getModifierState?: (k: string) => boolean }) => setCaps(!!e.getModifierState?.('CapsLock'));
+  return (
+    <>
+      <div className="input-wrap pw-wrap">
+        <Key size={16} />
+        <input id={id} className={invalid ? 'input err' : 'input'} type={show ? 'text' : 'password'} autoComplete={autoComplete} value={value} placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)} onKeyUp={onKey} onKeyDown={onKey} onBlur={() => setCaps(false)} spellCheck={false} autoCapitalize="off" />
+        <button type="button" className="pw-eye" onClick={() => setShow((x) => !x)} aria-label={show ? 'Скрыть пароль' : 'Показать пароль'} aria-pressed={show} title={show ? 'Скрыть пароль' : 'Показать пароль'} data-testid={`${id}-eye`}>
+          {show ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+      {caps && <div className="field-hint" style={{ color: 'var(--red)' }} role="status">Включён Caps Lock</div>}
+    </>
   );
 }
 
