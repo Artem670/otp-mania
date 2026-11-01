@@ -63,15 +63,19 @@ export default function WheelPage() {
   const rot = useRef(0);
   const used = spinsThisMonth(db, u.id);
   const left = Math.max(0, s.spinLimit - used);
-  const wins = useMemo(() => db.txs.filter((t) => t.userId === u.id && t.kind === 'wheel').sort((a, b) => b.ts - a.ts).slice(0, 8), [db, u.id]);
+  /** Пока колесо крутится, итог прокрутки не показываем ни в истории, ни в балансе. */
+  const [hold, setHold] = useState<{ since: number; coins: number } | null>(null);
+  const wins = useMemo(() => db.txs.filter((t) => t.userId === u.id && t.kind === 'wheel' && (!hold || t.ts < hold.since)).sort((a, b) => b.ts - a.ts).slice(0, 8), [db, u.id, hold]);
+  const shownCoins = hold ? hold.coins : u.coins;
   if (loading) return <PageSkeleton />;
 
   const spin = async () => {
     if (spinning) return;
     setResult(null);
     setSpinning(true);
+    setHold({ since: Date.now(), coins: u.coins - s.spinPrice });
     const prize = await run('spin', () => api.spin());
-    if (!prize) { setSpinning(false); return; }
+    if (!prize) { setSpinning(false); setHold(null); return; }
     const seg = wheelSegments(s.wheelPrizes).find((x) => x.prize.id === prize.id)!;
     const angle = seg.start + (seg.end - seg.start) * (0.2 + Math.random() * 0.6);
     const target = 360 - angle;
@@ -80,6 +84,7 @@ export default function WheelPage() {
     const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => {
       setSpinning(false);
+      setHold(null);
       setResult(prize);
       toast('success', prize.coins ? `Выпало: ${prize.name}. Коины уже на балансе` : `Выпало: ${prize.name}`);
     }, reduced ? 50 : 4300);
@@ -95,7 +100,7 @@ export default function WheelPage() {
             <WheelSvg prizes={s.wheelPrizes} rotation={rotation} />
           </div>
           <div className="row between row-wrap mt-16" style={{ gap: 12 }}>
-            <div className="small text-2">Баланс <b className="num">{fmt(u.coins)}</b> <Coin /> · осталось прокруток: <b data-testid="spins-left">{left}</b> из {s.spinLimit}</div>
+            <div className="small text-2">Баланс <b className="num">{fmt(shownCoins)}</b> <Coin /> · осталось прокруток: <b data-testid="spins-left">{left}</b> из {s.spinLimit}</div>
             <Button size="lg" variant="orange" icon={Sparkles} loading={spinning} disabled={spinning || left === 0 || u.coins < s.spinPrice} onClick={spin} data-testid="spin">Крутить за {fmt(s.spinPrice)}</Button>
           </div>
           {result && (
