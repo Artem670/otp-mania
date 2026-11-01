@@ -41,7 +41,8 @@ export type TxKind =
   | 'pool'
   | 'refund'
   | 'pet'
-  | 'wheel';
+  | 'wheel'
+  | 'transfer'; // перевод коинов коллеге
 
 export interface Tx {
   id: string;
@@ -52,6 +53,7 @@ export interface Tx {
   amount: number; // + зачисление, − списание
   title: string;
   refId?: string;
+  peerId?: string; // второй участник перевода
 }
 
 export interface Accrual {
@@ -244,6 +246,7 @@ export interface Settings {
   maxPerEmployeeMonth: number;
   spinPrice: number; // цена прокрутки колеса, коинов
   spinLimit: number; // прокруток в месяц на человека
+  transferLimitMonth: number; // сколько коинов можно перевести коллегам за месяц
   wheelPrizes: WheelPrize[];
   metricTargets: MetricTargets;
   minCommentLength: number;

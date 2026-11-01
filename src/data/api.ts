@@ -3,7 +3,7 @@ import { auth, docs, getSession, remoteEnabled } from './remote';
 import { DEPTS_PUBLIC } from './seed';
 import { ApiError } from './errors';
 import type { Category, DB, OrderStatus, Product, PulseQuestion, Role, Settings, SignalStatus, User } from './types';
-import { cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
+import { transfersThisMonth, cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
 import { uid } from '../lib/utils';
 
 /**
@@ -263,6 +263,30 @@ export const api = {
       touch(d, x.id);
     });
     return orderId;
+  },
+  /** Перевод коинов коллеге «просто так» или в знак уважения. Лимит на месяц задаёт администратор. */
+  async transferCoins(toId: string, amount: number, comment: string) {
+    await wait(350);
+    const db = getState();
+    const u = requireUser(db);
+    const to = userById(db, toId);
+    if (!to) fail('Выберите коллегу');
+    if (to!.id === u.id) fail('Себе перевести нельзя');
+    if (!isPositiveInt(amount)) fail('Сумма: целое число коинов');
+    const limit = db.settings.transferLimitMonth;
+    const used = transfersThisMonth(db, u.id);
+    if (used + amount > limit) fail(`Лимит переводов: ${limit.toLocaleString('ru-RU')} коинов в месяц. Осталось ${Math.max(0, limit - used).toLocaleString('ru-RU')}`);
+    if (u.coins < amount) fail(`Недостаточно коинов: на балансе ${u.coins.toLocaleString('ru-RU')}`);
+    const msg = comment.trim().slice(0, 140);
+    const id = uid('tr');
+    await commit((d) => {
+      const a = requireUser(d), b = d.users.find((x) => x.id === toId)!;
+      a.coins -= amount; b.coins += amount;
+      d.txs.push({ id: uid('tx'), ts: Date.now(), userId: a.id, kind: 'transfer', currency: 'coins', amount: -amount, title: `Перевод: ${b.name}${msg ? ` · ${msg}` : ''}`, refId: id, peerId: b.id });
+      d.txs.push({ id: uid('tx'), ts: Date.now(), userId: b.id, kind: 'transfer', currency: 'coins', amount, title: `Перевод от ${a.name}${msg ? ` · ${msg}` : ''}`, refId: id, peerId: a.id });
+      notify(d, b.id, `${a.name} перевёл(а) вам ${amount.toLocaleString('ru-RU')} коинов${msg ? `: «${msg}»` : ''}`, '/cabinet');
+      touch(d, a.id);
+    });
   },
   /** Пожертвование фонду в один клик (товар категории «Благотворительность»), не трогает корзину. */
   async donate(productId: string, qty = 1) {
@@ -568,6 +592,7 @@ export const api = {
     if (s.maxPerAccrual > s.maxPerEmployeeMonth) fail('Лимит одного начисления не может быть больше месячного лимита');
     if (!isPositiveInt(s.spinPrice)) fail('Цена прокрутки: целое число коинов');
     if (!(s.spinLimit >= 0) || Math.floor(s.spinLimit) !== s.spinLimit) fail('Лимит прокруток: целое число от нуля');
+    if (!(s.transferLimitMonth >= 0) || Math.floor(s.transferLimitMonth) !== s.transferLimitMonth) fail('Лимит переводов: целое число коинов от нуля');
     const probSum = s.wheelPrizes.reduce((a, p) => a + p.prob, 0);
     if (s.wheelPrizes.some((p) => !(p.prob >= 0))) fail('Вероятности призов не могут быть отрицательными');
     if (Math.abs(probSum - 100) > 0.01) fail(`Сумма вероятностей призов должна быть 100%, сейчас ${probSum.toFixed(1).replace('.', ',')}%`);

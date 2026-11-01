@@ -41,6 +41,11 @@ export const lastRecognition = (db: DB, userId: string) => {
   return t;
 };
 
+/** Сколько коинов человек уже перевёл коллегам в этом календарном месяце. */
+export function transfersThisMonth(db: DB, userId: string, now = Date.now()) {
+  const from = monthStart(now);
+  return sum(db.txs.filter((t) => t.userId === userId && t.kind === 'transfer' && t.amount < 0 && t.ts >= from).map((t) => -t.amount));
+}
 export const poolRaised = (p: Pool) => sum(p.contributions.map((c) => c.amount));
 export function charityTotals(db: DB) {
   const fromPools = sum(db.pools.filter((p) => p.kind === 'charity' && p.status !== 'cancelled').map(poolRaised));
@@ -332,6 +337,17 @@ export function signals(db: DB, now = Date.now()): Signal[] {
   });
 
   // 7. Без обоснования
+  // Взаимные переводы коинов за 30 дней (как «ты мне — я тебе»)
+  const tr = db.txs.filter((t) => t.kind === 'transfer' && t.amount < 0 && t.peerId && now - t.ts < 30 * DAY);
+  const seenPairs = new Set<string>();
+  for (const t of tr) {
+    const back = tr.filter((x) => x.userId === t.peerId && x.peerId === t.userId);
+    const pk = [t.userId, t.peerId!].sort().join(':');
+    if (!back.length || seenPairs.has(pk)) continue;
+    seenPairs.add(pk);
+    const there = sum(tr.filter((x) => x.userId === t.userId && x.peerId === t.peerId).map((x) => -x.amount)), backSum = sum(back.map((x) => -x.amount));
+    out.push({ id: `mtr:${pk}`, type: 'Взаимные переводы коинов', risk: there + backSum >= 1500 ? 'high' : 'medium', date: Math.max(t.ts, ...back.map((x) => x.ts)), participants: [t.userId, t.peerId!], description: `${name(t.userId)} и ${name(t.peerId!)} за 30 дней перевели друг другу ${there.toLocaleString('ru-RU')} и ${backSum.toLocaleString('ru-RU')} коинов.` });
+  }
   db.accruals.filter((a) => a.comment.trim().length < db.settings.minCommentLength).forEach((a) => out.push({ id: `nojust:${a.id}`, type: 'Начисление без обоснования', risk: 'low', date: a.ts, participants: [a.managerId, a.employeeId], description: `Комментарий «${a.comment}» не объясняет вклад. Сумма ${a.amount.toLocaleString('ru-RU')}.` }));
 
   // 8. Превышение лимитов

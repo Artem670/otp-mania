@@ -598,3 +598,5 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .nominal.on { background: var(--black); border-color: var(--black); color: #fff; }
 [data-theme="dark"] .nominal.on { background: var(--orange); border-color: var(--orange); color: #16161a; }
 .nominals.lg .nominal { height: 38px; padding: 0 16px; font-size: 14px; }
+.wallet.coins .btn.secondary.on-dark { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .3); }
+.wallet.coins .btn.secondary.on-dark:hover { background: rgba(255, 255, 255, .08); }

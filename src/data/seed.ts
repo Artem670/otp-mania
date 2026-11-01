@@ -6,7 +6,7 @@ import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, lineTitle, pickPrize, unitCost, unitPrice } from './selectors';
 
 // Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
-export const DB_VERSION = 10;
+export const DB_VERSION = 11;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -160,6 +160,7 @@ const SETTINGS: Settings = {
   managerFunds: {},
   maxPerAccrual: 8000,
   maxPerEmployeeMonth: 15000,
+  transferLimitMonth: 1000,
   minCommentLength: 20,
   spinPrice: 1000,
   spinLimit: 20,

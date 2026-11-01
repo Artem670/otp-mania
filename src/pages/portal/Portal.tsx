@@ -107,7 +107,7 @@ export function StrategyPage() {
 function fill(text: string, st: DB['settings']) {
   const v: Record<string, string> = {
     rate: String(st.conversionRate).replace('.', ','), maxPerAccrual: fmt(st.maxPerAccrual), maxPerEmployeeMonth: fmt(st.maxPerEmployeeMonth),
-    minComment: String(st.minCommentLength), spinPrice: fmt(st.spinPrice), spinLimit: String(st.spinLimit), thanksWeight: fmt(THANKS_WEIGHT),
+    minComment: String(st.minCommentLength), spinPrice: fmt(st.spinPrice), spinLimit: String(st.spinLimit), thanksWeight: fmt(THANKS_WEIGHT), transferLimit: fmt(st.transferLimitMonth ?? 1000),
   };
   return text.replace(/\{\{(\w+)\}\}/g, (m, k) => v[k] ?? m);
 }

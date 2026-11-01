@@ -184,7 +184,7 @@ async function migrate(db: DB) {
     });
   }
   // База знаний: новые статьи по всем механикам (пишет только администратор)
-  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body))) {
+  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}'))) {
     await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
   }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {

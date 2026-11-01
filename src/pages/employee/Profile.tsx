@@ -6,14 +6,15 @@ import type { Tx } from '../../data/types';
 import { useRouter, Link } from '../../lib/router';
 import { ago, fmt, fmtDate, fmtNum } from '../../lib/utils';
 import { Amount, Avatar, Badge, Button, Card, Coin, Empty, Field, Modal, PageSkeleton, Progress, Seg, Stat, useAction, usePageLoading, useToast } from '../../components/ui';
-import { Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart } from '../../components/icons';
+import { Send, Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart } from '../../components/icons';
 import { SendThanksForm } from './Thanks';
 import { PulseCard } from '../../components/PulseCard';
+import { TransferModal } from '../../components/TransferModal';
 import { CharityBanner } from '../../components/CharityBanner';
 import type { IconType } from 'react-icons';
 
 export const TX_ICONS: Record<Tx['kind'], IconType> = {
-  accrual: Award, conversion_in: Convert, conversion_out: Convert, order: Store, pool: PiggyBank, refund: Receipt, pet: Paw, wheel: Sparkles,
+  transfer: Send, accrual: Award, conversion_in: Convert, conversion_out: Convert, order: Store, pool: PiggyBank, refund: Receipt, pet: Paw, wheel: Sparkles,
 };
 
 export function OpRow({ t }: { t: Tx }) {
@@ -77,6 +78,7 @@ export default function Profile() {
   const loading = usePageLoading('profile');
   const { navigate } = useRouter();
   const [convert, setConvert] = useState(false);
+  const [transfer, setTransfer] = useState(false);
   const [thanks, setThanks] = useState(false);
   const [filter, setFilter] = useState<'all' | 'coins' | 'rucoins'>('all');
   const [showAll, setShowAll] = useState(false);
@@ -133,7 +135,7 @@ export default function Profile() {
               <div className="row-sm muted small"><Coin /> Коины</div>
               <div className="amount num" data-testid="balance-coins">{fmt(u.coins)}</div>
               <div className="small muted mt-8">Тратятся в магазине, на сборы и питомца</div>
-              <div className="row-sm mt-16"><Button size="sm" variant="orange" icon={Store} onClick={() => navigate('/cabinet/shop')}>В магазин</Button></div>
+              <div className="row-sm row-wrap mt-16"><Button size="sm" variant="orange" icon={Store} onClick={() => navigate('/cabinet/shop')}>В магазин</Button><Button size="sm" variant="secondary" icon={Send} onClick={() => setTransfer(true)} disabled={!u.coins} data-testid="open-transfer" className="on-dark">Перевести коллеге</Button></div>
               <div className="deco" />
             </div>
             <div className="wallet ru">
@@ -186,6 +188,7 @@ export default function Profile() {
         </div>
       </div>
       <ConvertModal open={convert} onClose={() => setConvert(false)} />
+      <TransferModal open={transfer} onClose={() => setTransfer(false)} />
       <SendThanksModal open={thanks} onClose={() => setThanks(false)} />
     </div>
   );
