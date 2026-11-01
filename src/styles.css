@@ -585,3 +585,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .table.stacked td:first-child > * { max-width: 100%; }
   .table.stacked tbody tr:hover td { background: none; }
 }
+@media (max-width: 640px) {
+  .badge { white-space: normal; height: auto; min-height: 22px; padding-top: 3px; padding-bottom: 3px; line-height: 1.25; }
+  .card-head { flex-wrap: wrap; }
+  .card-head > .btn, .card-head > button { max-width: 100%; }
+}
