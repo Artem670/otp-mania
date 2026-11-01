@@ -167,6 +167,11 @@ async function migrate(db: DB) {
     const oldCharity = db.pools.filter((p) => p.id === 'pool2' && !p.kind).map((p) => ({ ...p, kind: 'charity' as const }));
     await tryUpsert(oldCharity.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { oldCharity.forEach((p) => { db.pools[db.pools.findIndex((x) => x.id === p.id)] = p; }); });
   }
+  // Питомец теперь зовётся «ОТуПик»: переименовываем старое имя по умолчанию «Пятак» (своё имя, данное человеком, не трогаем)
+  const oldPets = db.users.filter((u) => u.pet?.name === 'Пятак').map((u) => ({ ...u, pet: { ...u.pet, name: 'ОТуПик' } }));
+  for (const u of oldPets) {
+    await tryUpsert([{ collection: 'users', id: u.id, data: u }], () => { db.users[db.users.findIndex((x) => x.id === u.id)] = u; });
+  }
   // Без удвоения от банка: обновляем описания пожертвований и сборов
   const doubled = (t?: string) => !!t && /удва|удво|столько же от банка|банк добавит/i.test(t);
   if (db.users.some((u) => u.email.endsWith('@mania.demo'))) {
