@@ -50,6 +50,7 @@ export function useNav(me: User, signalCount: number): NavNode[] {
         { label: 'Метрики программы', to: '/admin/metrics' },
         { label: 'Сигналы', to: '/admin/signals', badge: signalCount },
         { label: 'Сотрудники и роли', to: '/admin/users' },
+        { label: 'Коины за события', to: '/admin/coins' },
         { label: 'Настройки программы', to: '/admin/settings' },
       ],
     },

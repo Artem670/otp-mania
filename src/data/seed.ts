@@ -1,11 +1,11 @@
 import type {
-  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Pulse, Settings, Thanks, Tx, User, Ticket } from './types';
+  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Pulse, Settings, Thanks, Tx, User, Ticket, CoinRule } from './types';
 import { ARTICLES } from './articles';
 import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, lineTitle, pickPrize, unitCost, unitPrice } from './selectors';
 
 // Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
-export const DB_VERSION = 13;
+export const DB_VERSION = 14;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -150,6 +150,24 @@ export const PRODUCTS: Product[] = [
   { id: 'p-psy', name: 'Сессия с психологом', category: 'experiences', price: 20000, costRub: 3000, stock: 999, active: true, description: 'Онлайн-консультация 50 минут с психологом сервиса-партнёра. Содержание сессии остаётся между вами и психологом. Не чаще одной сессии в месяц.', icon: 'heart', tone: '#9E6FC3' },
 ];
 
+/**
+ * Коины за события. Суммы из текущей программы; коины за «спасибо» и за заполнение профиля убраны
+ * (спасибо растит рейтинг, профиль заполняется по умолчанию при выходе на работу). Добавлена годовщина в банке.
+ */
+export const COIN_RULES: CoinRule[] = [
+  { id: 'r-first-login', title: 'Первый вход на портал', amount: 100, how: 'auto', once: true },
+  { id: 'r-birthday', title: 'День рождения', amount: 50, how: 'hr', note: 'раз в год' },
+  { id: 'r-survey', title: 'Участие в опросе', amount: 50, how: 'hr', note: 'за каждый корпоративный опрос' },
+  { id: 'r-enps-1', title: 'Опрос eNPS в первый месяц работы', amount: 100, how: 'hr', once: true },
+  { id: 'r-enps-3', title: 'Опрос eNPS в третий месяц работы', amount: 100, how: 'hr', once: true },
+  { id: 'r-course-1', title: 'Назначенный курс или тест пройден в первый день', amount: 150, how: 'hr', note: 'за каждый курс' },
+  { id: 'r-course-2', title: 'Назначенный курс или тест пройден во второй день', amount: 100, how: 'hr', note: 'за каждый курс' },
+  { id: 'r-probation', title: 'Прохождение испытательного срока', amount: 500, how: 'hr', once: true },
+  { id: 'r-anniversary', title: 'Годовщина работы в банке', amount: 1000, how: 'hr', note: 'за каждый год' },
+  { id: 'r-mania', title: 'Участие в развитии ОТП Мании', amount: 2000, how: 'manual', once: true, note: 'например, тест новой версии' },
+  { id: 'r-event', title: 'Корпоративное событие: хакатон, волонтёрство, спикер', amount: 500, how: 'manual', note: 'по решению организатора' },
+];
+
 const SETTINGS: Settings = {
   conversionRate: 1,
   coinCostRub: 0.2,
@@ -160,6 +178,7 @@ const SETTINGS: Settings = {
   maxPerEmployeeMonth: 15000,
   transferLimitMonth: 1000,
   certLimitMonth: 1,
+  coinRules: COIN_RULES,
   minCommentLength: 20,
   spinPrice: 1000,
   spinLimit: 20,
@@ -472,9 +491,23 @@ export function createSeed(now = Date.now()): DB {
   demo.lastActiveAt = now - 3600_000;
   demo.pet.xp = 2100; // 3 уровень: открыты мерч, ОТуПик, аксессуары и одежда; до сертификатов 900 опыта
 
+  // Коины за события: опросы, курсы, дни рождения, годовщины
+  for (const u of users) {
+    const give = (ruleId: string, ts: number) => {
+      const r0 = COIN_RULES.find((x) => x.id === ruleId)!;
+      u.coins += r0.amount;
+      txs.push({ id: id('tx'), ts, userId: u.id, kind: 'bonus', currency: 'coins', amount: r0.amount, title: r0.title, refId: r0.id });
+    };
+    give('r-first-login', START);
+    for (let k = 0; k < 1 + Math.floor(r() * 3); k++) give('r-survey', START + r() * (now - START));
+    if (r() < 0.6) give('r-course-1', START + r() * (now - START)); else give('r-course-2', START + r() * (now - START));
+    if (r() < 0.25) give('r-birthday', START + r() * (now - START));
+    if (r() < 0.2) give('r-anniversary', START + r() * (now - START));
+  }
+
   // Остатки из прошлой версии программы (накоп)
   for (const u of users) {
-    const legacy = round100(2000 + r() * 14000);
+    const legacy = u.id === demo.id ? Math.max(round100(18000 - u.coins), 2000) : round100(2000 + r() * 14000); // демо-сотруднику хватает на покупки в магазине
     u.coins += legacy;
     txs.push({ id: id('tx'), ts: START, userId: u.id, kind: 'conversion_in', currency: 'coins', amount: legacy, title: 'Перенос баланса из прошлой версии программы' });
   }

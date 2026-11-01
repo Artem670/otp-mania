@@ -46,7 +46,7 @@ const pulseAvg = (db: DB, q: PulseQuestion, from: number) => {
 /** Кто был активен в программе: сам что-то сделал (не только получил). */
 export function engagedIds(db: DB, from: number, to = Date.now()) {
   const s = new Set<string>();
-  db.txs.forEach((t) => { if (t.ts >= from && t.ts < to && t.kind !== 'accrual' && t.kind !== 'refund' && !t.title.startsWith('Перенос баланса')) s.add(t.userId); });
+  db.txs.forEach((t) => { if (t.ts >= from && t.ts < to && t.kind !== 'accrual' && t.kind !== 'refund' && t.kind !== 'bonus' && !t.title.startsWith('Перенос баланса')) s.add(t.userId); });
   db.thanks.forEach((t) => { if (t.ts >= from && t.ts < to) s.add(t.fromId); });
   db.accruals.forEach((a) => { if (a.ts >= from && a.ts < to) s.add(a.managerId); });
   db.pulses.forEach((p) => { if (p.ts >= from && p.ts < to) s.add(p.userId); });

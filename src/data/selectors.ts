@@ -169,7 +169,7 @@ export function analytics(db: DB, days: number, now = Date.now()) {
   const employees = db.users;
   const activeIds = new Set(employees.filter((u) => now - u.lastActiveAt < 30 * DAY).map((u) => u.id));
   const participants = new Set<string>();
-  db.txs.forEach((t) => { if (t.ts >= from && t.kind !== 'accrual') participants.add(t.userId); });
+  db.txs.forEach((t) => { if (t.ts >= from && t.kind !== 'accrual' && t.kind !== 'bonus') participants.add(t.userId); });
   db.thanks.forEach((t) => { if (t.ts >= from) participants.add(t.fromId); });
 
   const acc = db.accruals.filter((a) => a.ts >= from);

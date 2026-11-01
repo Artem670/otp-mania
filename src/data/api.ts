@@ -1,6 +1,6 @@
 import { commit, getMode, getState, leaveLive, loadRemote, loadState, pull, resetState, setLocal } from './store';
 import { auth, docs, getSession, remoteEnabled } from './remote';
-import { DEPTS_PUBLIC } from './seed';
+import { COIN_RULES, DEPTS_PUBLIC } from './seed';
 import { ApiError } from './errors';
 import type { Category, DB, OrderStatus, Product, PulseQuestion, Role, Settings, SignalStatus, User } from './types';
 import { certLimit, certsInCart, certsThisMonth, transfersThisMonth, cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
@@ -69,6 +69,13 @@ async function enterLive() {
     await commit((d) => {
       d.users.push(newUser);
       notify(d, id, 'Добро пожаловать в ОТП Манию! Загляните к питомцу и в магазин', '/cabinet');
+      const first = (d.settings.coinRules ?? COIN_RULES).find((r) => r.id === 'r-first-login');
+      const nu = d.users.find((x) => x.id === id);
+      if (first && first.amount > 0 && nu) {
+        nu.coins += first.amount;
+        d.txs.push({ id: uid('tx'), ts: Date.now(), userId: id, kind: 'bonus', currency: 'coins', amount: first.amount, title: first.title, refId: first.id });
+        notify(d, id, `+${first.amount} коинов за первый вход на портал`, '/cabinet');
+      }
       const m = d.departments.find((x) => x.id === deptId)?.managerId;
       if (m) notify(d, m, `В вашу команду добавлен новый сотрудник: ${newUser.name}`, '/manager/kpi');
     });
@@ -662,6 +669,40 @@ export const api = {
       else d.departments.push({ id: uid('dep'), name: input.name.trim(), city: input.city.trim() || '—', managerId: null });
     });
   },
+  /** Начисление коинов за событие (по правилу) или разовое начисление администратора. */
+  async grantCoins(userIds: string[], ruleId: string, customAmount?: number, reason?: string) {
+    await wait(350);
+    const admin = requireAdmin();
+    if (!userIds.length) fail('Выберите хотя бы одного сотрудника');
+    const db = getState();
+    const rules = db.settings.coinRules ?? COIN_RULES;
+    const rule = rules.find((r) => r.id === ruleId);
+    let amount: number, title: string;
+    if (ruleId === 'custom') {
+      if (!customAmount || !isPositiveInt(customAmount)) fail('Сумма: целое число коинов больше нуля');
+      if (customAmount! > 100000) fail('За один раз не больше 100 000 коинов');
+      if (!reason || reason.trim().length < 10) fail('Напишите основание: минимум 10 символов');
+      amount = customAmount!; title = reason!.trim();
+    } else {
+      if (!rule) fail('Выберите событие');
+      if (!(rule!.amount > 0)) fail('У этого события сумма 0, начислять нечего');
+      amount = rule!.amount; title = rule!.title;
+    }
+    if (rule?.once) {
+      const already = userIds.filter((id) => db.txs.some((t) => t.userId === id && t.kind === 'bonus' && t.refId === rule.id));
+      if (already.length) fail(`Это разовое начисление, его уже получили: ${already.map((id) => userById(db, id)?.name ?? id).join(', ')}`);
+    }
+    await commit((d) => {
+      for (const id of userIds) {
+        const x = d.users.find((y) => y.id === id);
+        if (!x) continue;
+        x.coins += amount;
+        d.txs.push({ id: uid('tx'), ts: Date.now(), userId: id, kind: 'bonus', currency: 'coins', amount, title, refId: rule?.id ?? `custom:${admin.id}` });
+        notify(d, id, `Начислено ${amount.toLocaleString('ru-RU')} коинов: ${title}`, '/cabinet');
+      }
+    });
+    return amount * userIds.length;
+  },
   async updateSettings(patch: Partial<Settings>) {
     await wait(300);
     requireAdmin();
@@ -675,6 +716,7 @@ export const api = {
     if (!isPositiveInt(s.spinPrice)) fail('Цена прокрутки: целое число коинов');
     if (!(s.spinLimit >= 0) || Math.floor(s.spinLimit) !== s.spinLimit) fail('Лимит прокруток: целое число от нуля');
     if (!(s.transferLimitMonth >= 0) || Math.floor(s.transferLimitMonth) !== s.transferLimitMonth) fail('Лимит переводов: целое число коинов от нуля');
+    if (s.coinRules?.some((r) => !(r.amount >= 0) || Math.floor(r.amount) !== r.amount || r.amount > 100000)) fail('Суммы за события: целые числа от 0 до 100 000');
     if (s.certLimitMonth !== undefined && (!(s.certLimitMonth >= 0) || Math.floor(s.certLimitMonth) !== s.certLimitMonth)) fail('Лимит сертификатов: целое число от нуля');
     if (s.certLimitMonth !== undefined && (!(s.certLimitMonth >= 0) || Math.floor(s.certLimitMonth) !== s.certLimitMonth)) fail('Лимит сертификатов: целое число от нуля');
     const probSum = s.wheelPrizes.reduce((a, p) => a + p.prob, 0);

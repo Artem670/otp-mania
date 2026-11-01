@@ -14,7 +14,7 @@ import { CharityBanner } from '../../components/CharityBanner';
 import type { IconType } from 'react-icons';
 
 export const TX_ICONS: Record<Tx['kind'], IconType> = {
-  transfer: Send, accrual: Award, conversion_in: Convert, conversion_out: Convert, order: Store, pool: PiggyBank, refund: Receipt, pet: Paw, wheel: Sparkles,
+  transfer: Send, accrual: Award, conversion_in: Convert, conversion_out: Convert, order: Store, pool: PiggyBank, refund: Receipt, pet: Paw, wheel: Sparkles, bonus: Gift,
 };
 
 export function OpRow({ t }: { t: Tx }) {

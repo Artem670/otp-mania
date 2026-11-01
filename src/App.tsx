@@ -26,6 +26,7 @@ import ManagerPools from './pages/manager/ManagerPools';
 import Dashboard from './pages/admin/Dashboard';
 import Signals from './pages/admin/Signals';
 import UsersAdmin from './pages/admin/Users';
+import CoinsAdmin from './pages/admin/Coins';
 import SettingsPage from './pages/admin/Settings';
 import MetricsPage from './pages/admin/Metrics';
 import { NewsPage, EventsPage, StrategyPage, KbPage } from './pages/portal/Portal';
@@ -60,6 +61,7 @@ const ROUTES: R[] = [
   { pattern: '/admin/metrics', roles: ['admin'], render: () => <MetricsPage /> },
   { pattern: '/admin/signals', roles: ['admin'], render: () => <Signals /> },
   { pattern: '/admin/users', roles: ['admin'], render: () => <UsersAdmin /> },
+  { pattern: '/admin/coins', roles: ['admin'], render: () => <CoinsAdmin /> },
   { pattern: '/admin/settings', roles: ['admin'], render: () => <SettingsPage /> },
 ];
 

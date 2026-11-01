@@ -42,7 +42,8 @@ export type TxKind =
   | 'refund'
   | 'pet'
   | 'wheel'
-  | 'transfer'; // перевод коинов коллеге
+  | 'transfer' // перевод коинов коллеге
+  | 'bonus'; // коины за события и действия (день рождения, опрос, испытательный срок…)
 
 export interface Tx {
   id: string;
@@ -247,6 +248,7 @@ export interface Settings {
   spinPrice: number; // цена прокрутки колеса, коинов
   spinLimit: number; // прокруток в месяц на человека
   transferLimitMonth: number; // сколько коинов можно перевести коллегам за месяц
+  coinRules?: CoinRule[];
   certLimitMonth?: number; // сколько сертификатов сотрудник может купить за календарный месяц (по умолчанию 1)
   wheelPrizes: WheelPrize[];
   metricTargets: MetricTargets;
@@ -290,6 +292,9 @@ export interface Ticket {
   userReadAt: number;
   staffReadAt: number;
 }
+
+/** Правило начисления коинов за событие. how: auto начисляется системой, hr по данным HR-систем, manual вручную администратором. */
+export interface CoinRule { id: string; title: string; amount: number; how: 'auto' | 'hr' | 'manual'; once?: boolean; note?: string }
 
 export interface DB {
   version: number;
