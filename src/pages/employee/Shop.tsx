@@ -144,7 +144,7 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
           <div className="small muted">{p.stock > 100 ? 'В наличии' : `На складе: ${p.stock} шт.`}</div>
           {ru ? (
             <>
-              <div className="alert info small">Нематериальная награда за РуКоины: банку она ничего не стоит, а сотруднику даёт время. После получения согласуйте дату с руководителем.</div>
+              <div className="alert info small">Награда за РуКоины: время и возможности вместо вещей. После получения согласуйте дату с руководителем.</div>
               {u.rucoins < p.price && <div className="alert warn small">На балансе {fmt(u.rucoins)} РуКоинов, не хватает {fmt(p.price - u.rucoins)}.</div>}
               <div><Button variant="orange" loading={busy === 'm-ru'} disabled={u.rucoins < p.price || p.stock === 0} onClick={async () => { const ok = await run('m-ru', () => api.redeemPerk(p.id).then(() => true), `«${p.name}» ваша! Согласуйте дату с руководителем`); if (ok) onClose(); }}>Получить за {fmt(p.price)} РуКоинов</Button></div>
             </>

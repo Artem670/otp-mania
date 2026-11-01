@@ -61,7 +61,7 @@ export default function PetPage() {
   };
   return (
     <div className="stack-24">
-      <PageHeader title={`Питомец ${u.pet.name}`} subtitle="Коины на питомца не стоят банку денег. Каждый уровень открывает новую витрину магазина: от мерча до сертификатов." />
+      <PageHeader title={`Питомец ${u.pet.name}`} subtitle="Ухаживайте за ОТуПиком: с каждым уровнем открывается новая витрина магазина, от мерча до сертификатов." />
       <div className="grid g2">
         <div className="pet-stage">
           <div key={bounce} className={bounce ? 'pet-bounce' : undefined}><PetImage pose={joy ? 'joy' : hours < 24 ? 'main' : hours < 72 ? 'curious' : 'care'} size={joy || hours >= 24 ? 330 : 400} /></div>
