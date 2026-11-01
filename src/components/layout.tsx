@@ -29,6 +29,7 @@ export function useNav(me: User, signalCount: number): NavNode[] {
         { label: 'Благодарности', to: '/cabinet/thanks' },
         { label: 'Рейтинг', to: '/cabinet/rating' },
         { label: 'Сборы', to: '/cabinet/pools' },
+        { label: 'Благотворительность', to: '/cabinet/charity' },
         { label: 'Питомец', to: '/cabinet/pet' },
         { label: 'Колесо удачи', to: '/cabinet/wheel' },
       ],

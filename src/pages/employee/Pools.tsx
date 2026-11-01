@@ -42,7 +42,7 @@ export function PoolCard({ p, actions }: { p: Pool; actions?: ReactNode }) {
   );
 }
 
-function SupportModal({ p, onClose }: { p: Pool; onClose: () => void }) {
+export function SupportModal({ p, onClose }: { p: Pool; onClose: () => void }) {
   const db = useDB();
   const u = selectMe(db)!;
   const left = p.target - poolRaised(p);
@@ -101,7 +101,7 @@ export default function Pools() {
         <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Coins size={18} /></span><div><b className="small">2. Команда докидывает коины</b><div className="xs muted">Любая сумма от 100 коинов. Видно, кто уже участвует и сколько осталось до цели.</div></div></div>
         <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Heart size={18} /></span><div><b className="small">3. Цель достигнута, банк оплачивает</b><div className="xs muted">Благотворительные сборы банк удваивает. Если сбор отменят, коины вернутся полностью.</div></div></div>
       </div>
-      {ch.coins > 0 && <div className="alert small" style={{ background: 'var(--green-soft)' }}><span>Вместе с банком на благотворительность уже направлено <b className="nowrap">{fmt(ch.rub)} ₽</b>, участвовали {ch.donors} {plural(ch.donors, 'сотрудник', 'сотрудника', 'сотрудников')}.</span></div>}
+      {ch.coins > 0 && <div className="alert small row between row-wrap" style={{ background: 'var(--green-soft)' }}><span>Вместе с банком на благотворительность уже направлено <b className="nowrap">{fmt(ch.rub)} ₽</b>, участвовали {ch.donors} {plural(ch.donors, 'сотрудник', 'сотрудника', 'сотрудников')}.</span><Button size="sm" variant="secondary" icon={Heart} onClick={() => navigate('/cabinet/charity')}>Раздел «Благотворительность»</Button></div>}
       <div className="row between row-wrap">
         <Seg value={kind} onChange={setKind} ariaLabel="Тип сборов" options={[{ value: 'all', label: 'Все' }, { value: 'team', label: 'Для команды' }, { value: 'charity', label: 'Благотворительность' }]} />
         <Seg value={tab} onChange={setTab} ariaLabel="Фильтр сборов" options={[{ value: 'active', label: 'Активные' }, { value: 'done', label: 'Завершённые' }, { value: 'mine', label: 'С моим участием' }]} />

@@ -264,6 +264,27 @@ export const api = {
     });
     return orderId;
   },
+  /** Пожертвование фонду в один клик (товар категории «Благотворительность»), не трогает корзину. Банк удваивает сумму. */
+  async donate(productId: string, qty = 1) {
+    await wait(400);
+    const db = getState();
+    const u = requireUser(db);
+    const p = db.products.find((x) => x.id === productId);
+    if (!p || !p.active || p.category !== 'charity') fail('Пожертвование недоступно');
+    if (!isPositiveInt(qty)) fail('Количество: целое число');
+    const total = p!.price * qty;
+    if (u.coins < total) fail(`Недостаточно коинов: нужно ${total.toLocaleString('ru-RU')}, на балансе ${u.coins.toLocaleString('ru-RU')}`);
+    const orderId = uid('or');
+    await commit((d) => {
+      const x = requireUser(d);
+      x.coins -= total;
+      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total, status: 'delivered', items: [{ productId: p!.id, name: p!.name, qty, price: p!.price, costRub: p!.costRub }] });
+      d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -total, title: `Пожертвование: ${p!.name}`, refId: orderId });
+      notify(d, x.id, `Спасибо! ${total.toLocaleString('ru-RU')} коинов направлены в фонд, банк удвоит сумму`, '/cabinet/charity');
+      touch(d, x.id);
+    });
+    return orderId;
+  },
   /** Нематериальная награда за РуКоины: списывает РуКоины, создаёт заказ, руководитель получает уведомление для согласования. */
   async redeemPerk(productId: string) {
     await wait(400);

@@ -16,18 +16,18 @@ export function CharityBanner() {
     <section className="charity-banner" data-testid="charity-banner">
       <div className="charity-copy">
         <span className="badge" style={{ background: 'var(--orange)', color: 'var(--black)' }}><Heart size={12} /> Помогаем вместе</span>
-        <h2 className="mt-12">Каждый ваш коин банк удвоит</h2>
-        <p className="mt-8">Поддержите фонды коинами: через сбор всем банком или пожертвованием в магазине. Вместе уже направили <b>{fmt(t.rub)} ₽</b>.</p>
+        <h2 className="mt-12">Помогаем фондам вместе</h2>
+        <p className="mt-8">Поддержите «Дом с маяком», «Берегиню» и другие фонды коинами: через общий сбор или сразу пожертвованием. Вместе уже направили <b>{fmt(t.rub)} ₽</b>.</p>
         <div className="row-sm row-wrap mt-16">
-          <Button variant="orange" icon={HandHeart} onClick={() => navigate('/cabinet/pools')}>Поддержать сбор</Button>
-          <Button variant="secondary" onClick={() => navigate('/cabinet/shop/c/charity')}>Пожертвовать 1 000 коинов</Button>
+          <Button variant="orange" icon={HandHeart} onClick={() => navigate('/cabinet/charity')}>Поддержать сбор</Button>
+          <Button variant="secondary" onClick={() => navigate('/cabinet/charity')}>Пожертвовать 1 000 коинов</Button>
         </div>
       </div>
       <div className="charity-pools">
         {pools.map((p) => (
-          <button key={p.id} type="button" className="charity-pool" onClick={() => navigate('/cabinet/pools')}>
+          <button key={p.id} type="button" className="charity-pool" onClick={() => navigate('/cabinet/charity')}>
             <b className="small">{p.title}</b>
-            <span className="xs">{fmt(poolRaised(p))} из {fmt(p.target)} коинов + столько же от банка</span>
+            <span className="xs">{fmt(poolRaised(p))} из {fmt(p.target)} коинов</span>
             <Progress value={poolRaised(p) / p.target} tone="orange" thin label={`Собрано ${Math.round((poolRaised(p) / p.target) * 100)}%`} />
           </button>
         ))}

@@ -16,6 +16,7 @@ import Orders from './pages/employee/Orders';
 import ThanksPage from './pages/employee/Thanks';
 import Rating from './pages/employee/Rating';
 import Pools from './pages/employee/Pools';
+import Charity from './pages/employee/Charity';
 import PetPage from './pages/employee/Pet';
 import WheelPage from './pages/employee/Wheel';
 import Accrual from './pages/manager/Accrual';
@@ -48,6 +49,7 @@ const ROUTES: R[] = [
   { pattern: '/cabinet/thanks', render: () => <ThanksPage /> },
   { pattern: '/cabinet/rating', render: () => <Rating /> },
   { pattern: '/cabinet/pools', render: () => <Pools /> },
+  { pattern: '/cabinet/charity', render: () => <Charity /> },
   { pattern: '/cabinet/pet', render: () => <PetPage /> },
   { pattern: '/cabinet/wheel', render: () => <WheelPage /> },
   { pattern: '/manager/accrual', roles: ['manager'], render: () => <Accrual /> },
