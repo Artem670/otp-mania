@@ -1,6 +1,13 @@
 // Сборка в один HTML-файл: node build.mjs
 import { build } from '/opt/npm-tools/node_modules/esbuild/lib/main.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+
+// Подключение к базе: supabase.config.json (url и anonKey публичные) или переменные окружения
+let cfg = { url: '', anonKey: '' };
+if (existsSync('supabase.config.json')) cfg = { ...cfg, ...JSON.parse(readFileSync('supabase.config.json', 'utf8')) };
+if (process.env.SUPABASE_URL) cfg.url = process.env.SUPABASE_URL;
+if (process.env.SUPABASE_ANON_KEY) cfg.anonKey = process.env.SUPABASE_ANON_KEY;
+const OUT = process.env.OUT || 'dist/otp-mania.html';
 
 const NM = '/opt/npm-tools/node_modules';
 const res = await build({
@@ -13,12 +20,11 @@ const res = await build({
   target: ['es2020'],
   jsx: 'automatic',
   nodePaths: [NM],
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: { 'process.env.NODE_ENV': '"production"', __SUPABASE_URL__: JSON.stringify(cfg.url), __SUPABASE_ANON_KEY__: JSON.stringify(cfg.anonKey) },
   loader: { '.css': 'css', '.png': 'dataurl' },
   logLevel: 'warning',
 });
 const js = res.outputFiles.find((f) => f.path.endsWith('.js')).text;
-import('node:fs');
 const favicon = 'data:image/png;base64,' + readFileSync('src/assets/otp-logo.png').toString('base64');
 const css = res.outputFiles.find((f) => f.path.endsWith('.css'))?.text ?? '';
 mkdirSync('dist', { recursive: true });
@@ -38,5 +44,6 @@ const html = `<!doctype html>
 <script>${js.replace(/<\/script/g, '<\\/script')}</script>
 </body>
 </html>`;
-writeFileSync('dist/otp-mania.html', html);
-console.log('dist/otp-mania.html', (html.length / 1024).toFixed(0) + ' KB');
+writeFileSync(OUT, html);
+if (!process.env.OUT) writeFileSync('index.html', html);
+console.log(OUT, cfg.url ? 'база: ' + cfg.url : 'без базы (демо)', (html.length / 1024).toFixed(0) + ' KB');

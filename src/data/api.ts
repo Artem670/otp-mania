@@ -1,4 +1,7 @@
-import { commit, getState, loadState, resetState } from './store';
+import { commit, getMode, getState, leaveLive, loadRemote, loadState, pull, resetState, setLocal } from './store';
+import { auth, docs, getSession, remoteEnabled } from './remote';
+import { DEPTS_PUBLIC } from './seed';
+import { ApiError } from './errors';
 import type { Category, DB, OrderStatus, Product, Role, Settings, SignalStatus, User } from './types';
 import { cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
 import { uid } from '../lib/utils';
@@ -7,10 +10,12 @@ import { uid } from '../lib/utils';
  * Единый слой работы с данными. Интерфейс асинхронный, как у настоящего API:
  * для перехода на бэкенд достаточно заменить тела функций на HTTP-запросы.
  */
-export class ApiError extends Error {}
+export { ApiError };
 
 const LATENCY = 280;
-const wait = (ms = LATENCY) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** В демо имитирует задержку сети, в живом режиме подтягивает свежие данные перед изменением. */
+const wait = async (ms = LATENCY) => { if (getMode() === 'live') { try { await pull(); } catch { /* сохраним и без свежих данных */ } } else await sleep(ms); };
 const fail = (m: string): never => { throw new ApiError(m); };
 
 function requireUser(db: DB, id = db.sessionUserId) {
@@ -23,36 +28,126 @@ const notify = (db: DB, userId: string, text: string, link?: string) =>
 const touch = (db: DB, userId: string) => { const u = db.users.find((x) => x.id === userId); if (u) u.lastActiveAt = Date.now(); };
 const isPositiveInt = (n: number) => Number.isFinite(n) && n > 0 && Math.floor(n) === n;
 
+let recoveryPending = false;
+let authNotice: string | null = null;
+
+/** Переход в живой режим: загрузка общей базы и привязка профиля к аккаунту. */
+async function enterLive() {
+  const session = await getSession();
+  if (!session) fail('Сессия истекла. Войдите заново');
+  await loadRemote();
+  const db = getState();
+  let u = db.users.find((x) => (x as User & { authId?: string }).authId === session!.user.id);
+  if (!u) {
+    const meta = (session!.user.user_metadata ?? {}) as Record<string, string>;
+    const deptId = db.departments.some((d) => d.id === meta.deptId) ? meta.deptId : db.departments[0]?.id ?? 'retail';
+    const id = 'u_' + session!.user.id.replace(/-/g, '').slice(0, 12);
+    const newUser: User & { authId: string } = {
+      id, authId: session!.user.id, name: (meta.name || session!.user.email.split('@')[0]).trim(), email: session!.user.email.toLowerCase(), password: '',
+      title: meta.title || 'Сотрудник', deptId, role: 'employee', coins: 0, rucoins: 0, color: ['#9E6FC3', '#1F1F24', '#6F3FA0', '#6E9E00', '#3A3A42'][Math.floor(Math.random() * 5)],
+      joinedAt: Date.now(), lastActiveAt: Date.now(), pet: { name: 'Пятак', xp: 0, fedAt: Date.now() },
+    };
+    await commit((d) => {
+      d.users.push(newUser);
+      notify(d, id, 'Добро пожаловать в ОТП Манию! Загляните к питомцу и в магазин', '/cabinet');
+      const m = d.departments.find((x) => x.id === deptId)?.managerId;
+      if (m) notify(d, m, `В вашу команду добавлен новый сотрудник: ${newUser.name}`, '/manager/kpi');
+    });
+    u = newUser;
+  }
+  setLocal((d) => { d.sessionUserId = u!.id; });
+  return u!;
+}
+
 export const api = {
+  remoteEnabled,
+  mode: getMode,
   async init() {
-    await wait(450);
+    if (remoteEnabled) {
+      try {
+        const link = await auth.fromUrlHash();
+        if (link?.type === 'recovery') recoveryPending = true;
+        if (link?.type === 'signup' || link?.type === 'magiclink') authNotice = 'Почта подтверждена. Добро пожаловать!';
+      } catch (e) { authNotice = (e as Error).message; }
+      if (await getSession()) {
+        try { await enterLive(); return getState(); } catch (e) { authNotice = (e as Error).message; await auth.signOut(); leaveLive(); }
+      }
+    }
+    await sleep(350);
     return loadState();
+  },
+  /** Сообщение после перехода по ссылке из письма (показывается один раз). */
+  takeNotice() { const n = authNotice; authNotice = null; return n; },
+  takeRecovery() { const r = recoveryPending; recoveryPending = false; return r; },
+  async departmentsForSignup() {
+    if (!remoteEnabled) return DEPTS_PUBLIC;
+    try {
+      const rows = await docs.departments();
+      return rows.length ? rows.map((r) => r.data as { id: string; name: string }) : DEPTS_PUBLIC;
+    } catch { return DEPTS_PUBLIC; }
   },
 
   /* ---------- Авторизация ---------- */
   async login(email: string, password: string) {
-    await wait();
     const e = email.trim().toLowerCase();
     if (!e || !password) fail('Введите почту и пароль');
+    if (remoteEnabled && !e.endsWith('@mania.demo')) {
+      await auth.signIn(e, password);
+      return enterLive();
+    }
+    if (getMode() !== 'demo') loadState();
+    await wait();
     const u = getState().users.find((x) => x.email === e);
-    if (!u || u.password !== password) fail('Неверная почта или пароль');
-    commit((db) => { db.sessionUserId = u!.id; touch(db, u!.id); });
+    if (!u || u.password !== password) fail(remoteEnabled ? 'Неверная почта или пароль' : 'Неверная почта или пароль. Регистрация заработает после подключения базы');
+    await commit((db) => { db.sessionUserId = u!.id; touch(db, u!.id); });
     return u!;
   },
+  async register(input: { name: string; email: string; password: string; deptId: string; title: string }) {
+    if (!remoteEnabled) fail('Регистрация заработает после подключения базы данных. Пока войдите через демо');
+    const name = input.name.trim(), email = input.email.trim().toLowerCase(), title = input.title.trim();
+    if (name.split(/\s+/).length < 2) fail('Укажите имя и фамилию');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail('Проверьте адрес почты');
+    if (email.endsWith('@mania.demo')) fail('Этот домен зарезервирован для демо-аккаунтов');
+    if (input.password.length < 8) fail('Пароль: минимум 8 символов');
+    if (!input.deptId) fail('Выберите подразделение');
+    if (title.length < 2) fail('Укажите должность');
+    const r = await auth.signUp(email, input.password, { name, deptId: input.deptId, title });
+    if (r.confirmed) { await enterLive(); return { needsConfirm: false }; }
+    return { needsConfirm: true };
+  },
+  async recover(email: string) {
+    if (!remoteEnabled) fail('Восстановление пароля заработает после подключения базы');
+    const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) fail('Проверьте адрес почты');
+    await auth.recover(e);
+  },
+  async setNewPassword(password: string) {
+    if (password.length < 8) fail('Пароль: минимум 8 символов');
+    await auth.updatePassword(password);
+  },
   async logout() {
-    commit((db) => { db.sessionUserId = null; });
+    if (getMode() === 'live') {
+      await auth.signOut();
+      leaveLive();
+      loadState();
+      setLocal((d) => { d.sessionUserId = null; });
+      return;
+    }
+    await commit((db) => { db.sessionUserId = null; });
   },
   /** Демо-переключение роли: входит под демо-пользователем с этой ролью. */
   async switchRole(role: Role) {
+    if (getMode() === 'live') fail('В рабочем режиме роль назначает администратор');
     await wait(200);
     const db = getState();
     const map = { employee: 'a.smirnov@mania.demo', manager: 'i.belova@mania.demo', admin: 's.yusupova@mania.demo' };
     const u = db.users.find((x) => x.email === map[role]) ?? db.users.find((x) => x.role === role);
     if (!u) fail('Нет пользователя с такой ролью');
-    commit((d) => { d.sessionUserId = u!.id; });
+    await commit((d) => { d.sessionUserId = u!.id; });
     return u!;
   },
   async resetDemo() {
+    if (getMode() === 'live') fail('Сброс доступен только в демо-режиме');
     await wait(300);
     resetState();
   },
@@ -66,7 +161,7 @@ export const api = {
     if (rucoins > u.rucoins) fail(`Недостаточно РуКоинов: доступно ${u.rucoins.toLocaleString('ru-RU')}`);
     const rate = db.settings.conversionRate;
     const coins = Math.floor(rucoins * rate);
-    commit((d) => {
+    await commit((d) => {
       const x = requireUser(d);
       const id = uid('cv');
       x.rucoins -= rucoins; x.coins += coins;
@@ -90,7 +185,7 @@ export const api = {
     const msg = message.trim();
     if (msg.length < 10) fail('Напишите сообщение хотя бы из 10 символов');
     if (msg.length > 500) fail('Сообщение длиннее 500 символов');
-    commit((d) => {
+    await commit((d) => {
       d.thanks.push({ id: uid('th'), ts: Date.now(), fromId: u.id, toId: to!.id, categoryId, message: msg });
       notify(d, to!.id, `${u.name} поблагодарил(а) вас: «${msg.slice(0, 60)}${msg.length > 60 ? '…' : ''}»`, '/cabinet/thanks');
       touch(d, u.id);
@@ -98,7 +193,7 @@ export const api = {
   },
 
   /* ---------- Корзина и заказы ---------- */
-  addToCart(productId: string, qty = 1) {
+  async addToCart(productId: string, qty = 1) {
     const db = getState();
     const u = requireUser(db);
     const p = db.products.find((x) => x.id === productId);
@@ -106,18 +201,18 @@ export const api = {
     if (!isUnlocked(p!, u.pet.xp)) fail(`«${p!.name}» откроется на ${productLevel(p!)} уровне питомца (${PET_LEVELS[productLevel(p!) - 1].title})`);
     const cur = (db.carts[u.id] ?? []).find((l) => l.productId === productId)?.qty ?? 0;
     if (cur + qty > p!.stock) fail(`На складе осталось ${p!.stock} шт.`);
-    commit((d) => {
+    await commit((d) => {
       const lines = d.carts[u.id] ?? (d.carts[u.id] = []);
       const l = lines.find((x) => x.productId === productId);
       if (l) l.qty += qty; else lines.push({ productId, qty });
     });
   },
-  setCartQty(productId: string, qty: number) {
+  async setCartQty(productId: string, qty: number) {
     const db = getState();
     const u = requireUser(db);
     const p = db.products.find((x) => x.id === productId);
     if (p && qty > p.stock) fail(`На складе осталось ${p.stock} шт.`);
-    commit((d) => {
+    await commit((d) => {
       const lines = d.carts[u.id] ?? [];
       d.carts[u.id] = qty <= 0 ? lines.filter((l) => l.productId !== productId) : lines.map((l) => (l.productId === productId ? { ...l, qty } : l));
     });
@@ -135,7 +230,7 @@ export const api = {
     }
     if (cart.total > u.coins) fail(`Недостаточно коинов: нужно ${cart.total.toLocaleString('ru-RU')}, на балансе ${u.coins.toLocaleString('ru-RU')}`);
     const orderId = uid('or');
-    commit((d) => {
+    await commit((d) => {
       const x = requireUser(d);
       x.coins -= cart.total;
       for (const l of cart.lines) d.products.find((p) => p.id === l.productId)!.stock -= l.qty;
@@ -150,7 +245,7 @@ export const api = {
   async rateOrder(orderId: string, csi: number) {
     await wait(200);
     if (!(csi >= 1 && csi <= 5)) fail('Оценка от 1 до 5');
-    commit((d) => {
+    await commit((d) => {
       const o = d.orders.find((x) => x.id === orderId);
       if (!o || o.userId !== d.sessionUserId) fail('Заказ не найден');
       if (o!.status !== 'delivered') fail('Оценить можно только выданный заказ');
@@ -171,7 +266,7 @@ export const api = {
     if (amount > u.coins) fail(`Недостаточно коинов: на балансе ${u.coins.toLocaleString('ru-RU')}`);
     const left = p!.target - poolRaised(p!);
     if (amount > left) fail(`До цели осталось ${left.toLocaleString('ru-RU')} коинов`);
-    commit((d) => {
+    await commit((d) => {
       const x = requireUser(d);
       const pool = d.pools.find((y) => y.id === poolId)!;
       x.coins -= amount;
@@ -198,7 +293,7 @@ export const api = {
     if (!(input.deadline > Date.now())) fail('Срок окончания должен быть в будущем');
     if (u.role === 'manager' && input.scope !== u.deptId && input.scope !== 'all') fail('Руководитель создаёт сборы для своего подразделения или для всех');
     const id = uid('pool');
-    commit((d) => {
+    await commit((d) => {
       d.pools.push({ id, title: input.title.trim(), description: input.description.trim(), goal: input.goal.trim(), target: input.target, deadline: input.deadline, scope: input.scope, organizerId: u.id, image: input.image, contributions: [], status: 'active', createdAt: Date.now() });
       d.users.filter((x) => x.id !== u.id && (input.scope === 'all' || x.deptId === input.scope)).forEach((x) => notify(d, x.id, `Новый сбор: «${input.title.trim()}»`, '/cabinet/pools'));
     });
@@ -211,7 +306,7 @@ export const api = {
     const p = db.pools.find((x) => x.id === poolId);
     if (!p || p.status !== 'active') fail('Сбор уже закрыт');
     if (p!.organizerId !== u.id && u.role !== 'admin') fail('Закрыть сбор может организатор или администратор');
-    commit((d) => {
+    await commit((d) => {
       const pool = d.pools.find((x) => x.id === poolId)!;
       if (mode === 'complete') {
         pool.status = 'completed';
@@ -255,7 +350,7 @@ export const api = {
       const got = employeeMonthReceived(db, id);
       if (got + amount > s.maxPerEmployeeMonth) fail(`${userById(db, id)!.name}: превышен месячный лимит ${s.maxPerEmployeeMonth.toLocaleString('ru-RU')} (уже получено ${got.toLocaleString('ru-RU')})`);
     }
-    commit((d) => {
+    await commit((d) => {
       for (const id of employeeIds) {
         const e = d.users.find((x) => x.id === id)!;
         const aid = uid('ac');
@@ -275,7 +370,7 @@ export const api = {
     const db = getState();
     const u = requireUser(db);
     if (u.coins < cost) fail(`Недостаточно коинов: нужно ${cost.toLocaleString('ru-RU')}`);
-    commit((d) => {
+    await commit((d) => {
       const x = requireUser(d);
       x.coins -= cost; x.pet.xp += xp; x.pet.fedAt = Date.now();
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'pet', currency: 'coins', amount: -cost, title: `Питомец: ${label}` });
@@ -286,7 +381,7 @@ export const api = {
     await wait(150);
     const n = name.trim();
     if (n.length < 2 || n.length > 20) fail('Имя от 2 до 20 символов');
-    commit((d) => { requireUser(d).pet.name = n; });
+    await commit((d) => { requireUser(d).pet.name = n; });
   },
 
   /* ---------- Колесо удачи ---------- */
@@ -299,7 +394,7 @@ export const api = {
     if (used >= s.spinLimit) fail(`Лимит ${s.spinLimit} прокруток в месяц исчерпан. Новые будут с 1 числа`);
     if (u.coins < s.spinPrice) fail(`Недостаточно коинов: прокрутка стоит ${s.spinPrice.toLocaleString('ru-RU')}`);
     const prize = pickPrize(s.wheelPrizes, Math.random());
-    commit((d) => {
+    await commit((d) => {
       const x = requireUser(d);
       const now = Date.now();
       x.coins -= s.spinPrice;
@@ -325,34 +420,34 @@ export const api = {
     if (!ev) fail('Мероприятие не найдено');
     const going = ev!.attendees.includes(u.id);
     if (!going && ev!.attendees.length >= ev!.capacity) fail('Мест больше нет');
-    commit((d) => {
+    await commit((d) => {
       const e = d.events.find((x) => x.id === eventId)!;
       e.attendees = going ? e.attendees.filter((x) => x !== u.id) : [...e.attendees, u.id];
     });
     return !going;
   },
-  markNotificationsRead() {
+  async markNotificationsRead() {
     const db = getState();
     const u = requireUser(db);
     if (!db.notifications.some((n) => n.userId === u.id && !n.read)) return;
-    commit((d) => d.notifications.forEach((n) => { if (n.userId === u.id) n.read = true; }));
+    await commit((d) => d.notifications.forEach((n) => { if (n.userId === u.id) n.read = true; }));
   },
   async updateProfile(patch: { avatar?: string }) {
     await wait(200);
-    commit((d) => { const x = requireUser(d); if (patch.avatar !== undefined) x.avatar = patch.avatar; });
+    await commit((d) => { const x = requireUser(d); if (patch.avatar !== undefined) x.avatar = patch.avatar; });
   },
 
   /* ---------- Администрирование ---------- */
   async setSignalStatus(id: string, status: SignalStatus) {
     await wait(200);
     requireAdmin();
-    commit((d) => { d.signalStatus[id] = status; });
+    await commit((d) => { d.signalStatus[id] = status; });
   },
   async setUserRole(userId: string, role: Role) {
     await wait(250);
     const admin = requireAdmin();
     if (userId === admin.id && role !== 'admin') fail('Нельзя снять роль администратора с себя');
-    commit((d) => {
+    await commit((d) => {
       const u = d.users.find((x) => x.id === userId)!;
       u.role = role;
       const dept = d.departments.find((x) => x.id === u.deptId)!;
@@ -371,13 +466,13 @@ export const api = {
     const db = getState();
     const u = userById(db, userId)!;
     if (u.role === 'manager') fail('Руководителя нельзя перевести: сначала назначьте ему роль сотрудника');
-    commit((d) => { d.users.find((x) => x.id === userId)!.deptId = deptId; });
+    await commit((d) => { d.users.find((x) => x.id === userId)!.deptId = deptId; });
   },
   async saveDepartment(input: { id?: string; name: string; city: string }) {
     await wait(250);
     requireAdmin();
     if (input.name.trim().length < 3) fail('Название подразделения: минимум 3 символа');
-    commit((d) => {
+    await commit((d) => {
       if (input.id) { const x = d.departments.find((y) => y.id === input.id)!; x.name = input.name.trim(); x.city = input.city.trim(); }
       else d.departments.push({ id: uid('dep'), name: input.name.trim(), city: input.city.trim() || '—', managerId: null });
     });
@@ -400,14 +495,14 @@ export const api = {
     if (!isPositiveInt(s.quarterFundDefault)) fail('Фонд по умолчанию: целое число');
     if (Object.values(s.managerFunds).some((v) => !(v >= 0))) fail('Фонды руководителей не могут быть отрицательными');
     if (s.rules.some((r) => !r.trim()) || s.forbidden.some((r) => !r.trim())) fail('Уберите пустые пункты правил');
-    commit((d) => { d.settings = s; });
+    await commit((d) => { d.settings = s; });
   },
   async saveCategory(kind: 'accrual' | 'thanks', cat: Category) {
     await wait(200);
     requireAdmin();
     if (cat.name.trim().length < 3) fail('Название категории: минимум 3 символа');
     if (kind === 'accrual' && (!(cat.min! > 0) || !(cat.max! >= cat.min!))) fail('Проверьте диапазон: минимум больше нуля, максимум не меньше минимума');
-    commit((d) => {
+    await commit((d) => {
       const list = kind === 'accrual' ? d.settings.accrualCategories : d.settings.thanksCategories;
       const i = list.findIndex((c) => c.id === cat.id);
       if (i >= 0) list[i] = { ...cat, name: cat.name.trim() }; else list.push({ ...cat, id: uid('cat'), name: cat.name.trim() });
@@ -419,7 +514,7 @@ export const api = {
     const s = getState().settings;
     const list = kind === 'accrual' ? s.accrualCategories : s.thanksCategories;
     if (list.length <= 1) fail('Должна остаться хотя бы одна категория');
-    commit((d) => {
+    await commit((d) => {
       if (kind === 'accrual') d.settings.accrualCategories = d.settings.accrualCategories.filter((c) => c.id !== id);
       else d.settings.thanksCategories = d.settings.thanksCategories.filter((c) => c.id !== id);
     });
@@ -431,7 +526,7 @@ export const api = {
     if (!isPositiveInt(p.price)) fail('Цена: целое число коинов больше нуля');
     if (!(p.costRub >= 0)) fail('Себестоимость не может быть отрицательной');
     if (!(p.stock >= 0) || Math.floor(p.stock) !== p.stock) fail('Остаток: целое число от нуля');
-    commit((d) => {
+    await commit((d) => {
       const i = d.products.findIndex((x) => x.id === p.id);
       if (i >= 0) d.products[i] = { ...p, name: p.name.trim() }; else d.products.push({ ...p, id: uid('p'), name: p.name.trim() });
     });
@@ -443,7 +538,7 @@ export const api = {
     if (!o) fail('Заказ не найден');
     if (o!.status === 'cancelled') fail('Отменённый заказ нельзя изменить');
     if (o!.status === 'delivered' && status !== 'delivered') fail('Выданный заказ нельзя вернуть в работу');
-    commit((d) => {
+    await commit((d) => {
       const x = d.orders.find((y) => y.id === orderId)!;
       x.status = status;
       if (status === 'cancelled') {

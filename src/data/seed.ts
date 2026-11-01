@@ -15,7 +15,7 @@ export const DEMO_ACCOUNTS = {
 
 const COLORS = ['#9E6FC3', '#1F1F24', '#6E6E78', '#FF6A13', '#8E8E99', '#3A3A42', '#6E9E00', '#5B5B66'];
 
-const DEPTS: Omit<Department, 'managerId'>[] = [
+export const DEPTS: Omit<Department, 'managerId'>[] = [
   { id: 'retail', name: 'Розничный бизнес', city: 'Пермь' },
   { id: 'mortgage', name: 'Ипотечное кредитование', city: 'Москва' },
   { id: 'it', name: 'IT и цифровые сервисы', city: 'Москва' },
@@ -23,6 +23,8 @@ const DEPTS: Omit<Department, 'managerId'>[] = [
   { id: 'risk', name: 'Риск-менеджмент', city: 'Москва' },
   { id: 'hr', name: 'HR и внутренние коммуникации', city: 'Москва' },
 ];
+
+export const DEPTS_PUBLIC = DEPTS.map((d) => ({ id: d.id, name: d.name }));
 
 // [имя, email-префикс, должность, подразделение, роль]
 const PEOPLE: [string, string, string, string, User['role']][] = [

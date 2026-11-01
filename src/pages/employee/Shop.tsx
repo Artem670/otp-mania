@@ -40,7 +40,7 @@ export default function Shop({ productId }: { productId?: string }) {
     return c;
   }, [db]);
 
-  const add = (p: Product) => run('add-' + p.id, () => { api.addToCart(p.id); }, `«${p.name}» в корзине`);
+  const add = (p: Product) => run('add-' + p.id, () => api.addToCart(p.id), `«${p.name}» в корзине`);
   const open = productId ? db.products.find((p) => p.id === productId) : null;
 
   return (
@@ -109,7 +109,7 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
   const sold = db.orders.reduce((a, o) => a + o.items.filter((i) => i.productId === p.id).reduce((x, i) => x + i.qty, 0), 0);
   const enough = u.coins >= p.price * qty;
   const add = async (thenCart: boolean) => {
-    const ok = await run('m-add', () => { api.addToCart(p.id, qty); return true; }, `«${p.name}» × ${qty} в корзине`);
+    const ok = await run('m-add', () => api.addToCart(p.id, qty).then(() => true), `«${p.name}» × ${qty} в корзине`);
     if (ok && thenCart) navigate('/cabinet/cart');
   };
   return (

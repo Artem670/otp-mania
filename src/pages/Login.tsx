@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../data/api';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../data/seed';
 import type { Role } from '../data/types';
@@ -13,22 +13,42 @@ const ROLES: { role: Role; title: string; text: string; icon: typeof UserIcon }[
   { role: 'admin', title: 'Администратор', text: 'Светлана Юсупова, HR', icon: ShieldAlert },
 ];
 
+type Tab = 'login' | 'register' | 'recover';
+
 export default function Login() {
   const { navigate } = useRouter();
   const { run, busy } = useAction();
+  const [tab, setTab] = useState<Tab>('login');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; pass?: string }>({});
+  const [name, setName] = useState('');
+  const [title, setTitle] = useState('');
+  const [deptId, setDeptId] = useState('');
+  const [depts, setDepts] = useState<{ id: string; name: string }[]>([]);
+  const [sent, setSent] = useState<null | 'confirm' | 'recover'>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const live = api.remoteEnabled;
+  useEffect(() => { if (tab === 'register' && !depts.length) api.departmentsForSignup().then((d) => { setDepts(d); setDeptId((x) => x || d[0]?.id || ''); }); }, [tab, depts.length]);
+  const okEmail = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
 
   const submit = () => {
-    const e: typeof errors = {};
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) e.email = 'Введите рабочую почту, например name@mania.demo';
-    if (!pass) e.pass = 'Введите пароль';
+    const e: Record<string, string> = {};
+    if (!okEmail(email)) e.email = 'Введите почту, например name@company.ru';
+    if (tab !== 'recover' && !pass) e.pass = 'Введите пароль';
+    if (tab === 'register') {
+      if (name.trim().split(/\s+/).length < 2) e.name = 'Укажите имя и фамилию';
+      if (pass && pass.length < 8) e.pass = 'Минимум 8 символов';
+      if (title.trim().length < 2) e.title = 'Укажите должность';
+      if (!deptId) e.dept = 'Выберите подразделение';
+    }
     setErrors(e);
     if (Object.keys(e).length) return;
-    run('login', async () => { const u = await api.login(email, pass); navigate(u.role === 'admin' ? '/admin' : '/cabinet'); return u; }, (u) => `Добро пожаловать, ${u.name.split(' ')[0]}!`);
+    if (tab === 'login') run('login', async () => { const u = await api.login(email, pass); navigate(u.role === 'admin' ? '/admin' : '/cabinet'); return u; }, (u) => `Добро пожаловать, ${u.name.split(' ')[0]}!`);
+    if (tab === 'register') run('reg', async () => { const r = await api.register({ name, email, password: pass, deptId, title }); if (r.needsConfirm) setSent('confirm'); else navigate('/cabinet'); return r; });
+    if (tab === 'recover') run('rec', async () => { await api.recover(email); setSent('recover'); });
   };
   const demo = (r: Role) => run('demo-' + r, async () => { const u = await api.login(DEMO_ACCOUNTS[r], DEMO_PASSWORD); navigate(r === 'admin' ? '/admin' : r === 'manager' ? '/manager/accrual' : '/cabinet'); return u; }, (u) => `Демо-вход: ${u.name}`);
+  const switchTab = (t: Tab) => { setTab(t); setErrors({}); setSent(null); };
 
   return (
     <div className="login">
@@ -45,18 +65,40 @@ export default function Login() {
       <div className="login-form">
         <div className="login-box">
           <div className="row mb-16"><OtpLogo size={44} radius={12} /><div><div className="strong">ОТП Банк</div><div className="xs muted row-sm">Программа признания ОТП Мания <SpaceDots height={7} /></div></div></div>
-          <h2 style={{ fontSize: 24 }}>Вход в портал</h2>
-          <p className="muted mt-4">Используйте корпоративную почту и пароль</p>
-          <form className="col mt-24" style={{ gap: 14 }} noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
-            <Field label="Рабочая почта" error={errors.email} htmlFor="email">
-              <div className="input-wrap"><Mail size={16} /><input id="email" className={errors.email ? 'input err' : 'input'} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@mania.demo" /></div>
+          {sent ? (
+            <div className="card soft" data-testid="check-email">
+              <Mail size={28} />
+              <h2 className="mt-12" style={{ fontSize: 22 }}>Проверьте почту</h2>
+              <p className="text-2 mt-8">{sent === 'confirm' ? <>Мы отправили письмо на <b>{email}</b>. Перейдите по ссылке в нём, чтобы подтвердить почту и войти.</> : <>Если аккаунт с почтой <b>{email}</b> есть, на неё придёт ссылка для нового пароля.</>}</p>
+              <p className="xs muted mt-8">Письма нет несколько минут? Проверьте папку «Спам».</p>
+              <Button variant="secondary" className="mt-16" onClick={() => switchTab('login')}>Вернуться ко входу</Button>
+            </div>
+          ) : <>
+          <h2 style={{ fontSize: 24 }}>{tab === 'login' ? 'Вход в портал' : tab === 'register' ? 'Регистрация' : 'Восстановление пароля'}</h2>
+          <div className="seg mt-12" role="tablist">
+            <button role="tab" className={tab === 'login' ? 'on' : ''} onClick={() => switchTab('login')}>Вход</button>
+            <button role="tab" className={tab === 'register' ? 'on' : ''} onClick={() => switchTab('register')}>Регистрация</button>
+          </div>
+          {!live && tab !== 'login' && <div className="alert warn small mt-12">База данных ещё не подключена: регистрация и восстановление пароля заработают после её подключения. Пока войдите через демо ниже.</div>}
+          <form className="col mt-16" style={{ gap: 14 }} noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
+            {tab === 'register' && <Field label="Имя и фамилия" error={errors.name} htmlFor="name"><input id="name" className={errors.name ? 'input err' : 'input'} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Мария Иванова" /></Field>}
+            <Field label="Почта" error={errors.email} htmlFor="email">
+              <div className="input-wrap"><Mail size={16} /><input id="email" className={errors.email ? 'input err' : 'input'} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.ru" /></div>
             </Field>
-            <Field label="Пароль" error={errors.pass} htmlFor="pass">
-              <div className="input-wrap"><Key size={16} /><input id="pass" className={errors.pass ? 'input err' : 'input'} type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} /></div>
-            </Field>
-            <Button type="button" size="lg" block loading={busy === 'login'} onClick={submit}>Войти</Button>
+            {tab !== 'recover' && <Field label="Пароль" error={errors.pass} hint={tab === 'register' ? 'Минимум 8 символов' : undefined} htmlFor="pass">
+              <div className="input-wrap"><Key size={16} /><input id="pass" className={errors.pass ? 'input err' : 'input'} type="password" autoComplete={tab === 'register' ? 'new-password' : 'current-password'} value={pass} onChange={(e) => setPass(e.target.value)} /></div>
+            </Field>}
+            {tab === 'register' && <div className="grid g2" style={{ gap: 12 }}>
+              <Field label="Подразделение" error={errors.dept} htmlFor="dept"><select id="dept" className="select" value={deptId} onChange={(e) => setDeptId(e.target.value)}>{depts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
+              <Field label="Должность" error={errors.title} htmlFor="title"><input id="title" className={errors.title ? 'input err' : 'input'} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Менеджер" /></Field>
+            </div>}
+            <Button type="button" size="lg" block loading={busy === 'login' || busy === 'reg' || busy === 'rec'} onClick={submit} data-testid="auth-submit">{tab === 'login' ? 'Войти' : tab === 'register' ? 'Создать аккаунт' : 'Прислать ссылку'}</Button>
+            {tab === 'login' && <button type="button" className="btn ghost sm" onClick={() => switchTab('recover')}>Забыли пароль?</button>}
+            {tab === 'recover' && <button type="button" className="btn ghost sm" onClick={() => switchTab('login')}>Вспомнил пароль</button>}
+            {tab === 'register' && <p className="xs muted">После регистрации придёт письмо для подтверждения почты. Роль руководителя или администратора назначает администратор программы.</p>}
           </form>
-          <div className="row mt-24 mb-12"><div className="grow" style={{ height: 1, background: 'var(--border)' }} /><span className="xs muted">или демо-вход</span><div className="grow" style={{ height: 1, background: 'var(--border)' }} /></div>
+          </>}
+          <div className="row mt-24 mb-12"><div className="grow" style={{ height: 1, background: 'var(--border)' }} /><span className="xs muted">демо без регистрации</span><div className="grow" style={{ height: 1, background: 'var(--border)' }} /></div>
           <div className="col" style={{ gap: 8 }}>
             {ROLES.map(({ role, title, text, icon: Icon }) => (
               <button key={role} className="demo-role" onClick={() => demo(role)} disabled={!!busy} data-testid={`demo-${role}`}>
@@ -66,7 +108,7 @@ export default function Login() {
               </button>
             ))}
           </div>
-          <p className="xs muted mt-16">Пароль у демо-аккаунтов: <b>{DEMO_PASSWORD}</b>. Позже роль будет определяться корпоративной авторизацией.</p>
+          <p className="xs muted mt-16">Демо работает в песочнице вашего браузера и не меняет общую базу. Пароль демо-аккаунтов: <b>{DEMO_PASSWORD}</b>.</p>
         </div>
       </div>
     </div>

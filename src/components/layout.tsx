@@ -91,6 +91,7 @@ function Sidebar({ me, open, onNavigate }: { me: User; open: boolean; onNavigate
         <div className="xs muted">Вы вошли как</div>
         <div className="strong mt-4">{ROLE_LABELS[me.role]}</div>
         <div className="xs muted mt-4">{me.role === 'employee' ? 'Доступен кабинет сотрудника' : me.role === 'manager' ? 'Кабинет сотрудника + инструменты руководителя' : 'Кабинет сотрудника + администрирование'}</div>
+        <div className="mt-8"><span className={api.mode() === 'live' ? 'badge green' : 'badge'}>{api.mode() === 'live' ? 'Рабочая база' : 'Демо-песочница'}</span></div>
       </div>
     </nav>
   );
@@ -171,7 +172,7 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
         <button className="icon-btn" onClick={() => navigate('/cabinet/cart')} aria-label={`Корзина, товаров: ${cart.count}`}>
           <Cart size={18} />{cart.count > 0 && <span className="dot">{cart.count}</span>}
         </button>
-        <button className="icon-btn" onClick={() => { setPop(pop === 'notif' ? null : 'notif'); if (pop !== 'notif') setTimeout(() => api.markNotificationsRead(), 1200); }} aria-label={`Уведомления, непрочитанных: ${unread}`} aria-expanded={pop === 'notif'}>
+        <button className="icon-btn" onClick={() => { setPop(pop === 'notif' ? null : 'notif'); if (pop !== 'notif') setTimeout(() => { api.markNotificationsRead().catch(() => {}); }, 1200); }} aria-label={`Уведомления, непрочитанных: ${unread}`} aria-expanded={pop === 'notif'}>
           <Bell size={18} />{unread > 0 && <span className="dot">{unread}</span>}
         </button>
         <button className="avatar-btn" onClick={() => setPop(pop === 'user' ? null : 'user')} aria-label="Меню пользователя" aria-expanded={pop === 'user'}>
@@ -197,6 +198,7 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
               <div className="grow"><div className="strong ellipsis">{me.name}</div><div className="xs muted ellipsis">{me.title}</div><div className="xs muted ellipsis">{deptName(db, me.deptId)}</div></div>
             </div>
             <button className="menu-item" onClick={() => { setPop(null); navigate('/cabinet'); }}><UserIcon size={16} />Мой профиль</button>
+            {api.mode() === 'demo' ? <>
             <div className="nav-label" style={{ paddingTop: 8 }}>Демо: войти с ролью</div>
             {(['employee', 'manager', 'admin'] as Role[]).map((r) => (
               <button key={r} className={cx('menu-item', me.role === r && 'active')} onClick={() => switchRole(r)} disabled={busy === 'role'}>
@@ -206,7 +208,8 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
             ))}
             <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
             <button className="menu-item" onClick={() => run('reset', async () => { await api.resetDemo(); setPop(null); navigate('/'); }, 'Демо-данные восстановлены')}><Reset size={16} />Сбросить демо-данные</button>
-            <button className="menu-item" onClick={() => { api.logout(); navigate('/'); }}><LogOut size={16} />Выйти</button>
+            </> : <div className="nav-label" style={{ paddingTop: 8 }}>Рабочий режим: данные в общей базе</div>}
+            <button className="menu-item" onClick={() => run('logout', async () => { await api.logout(); navigate('/'); })}><LogOut size={16} />Выйти</button>
           </div>
         )}
       </div>

@@ -6,7 +6,7 @@ import type { Role } from './data/types';
 import { match, useRouter } from './lib/router';
 import { AppLayout } from './components/layout';
 import { OtpLogo, SpaceDots } from './components/brand';
-import { Button, Empty, PageSkeleton, Skeleton } from './components/ui';
+import { Button, Empty, Field, Modal, PageSkeleton, Skeleton, useAction, useToast } from './components/ui';
 import { Alert, Lock } from './components/icons';
 import Login from './pages/Login';
 import Profile from './pages/employee/Profile';
@@ -92,7 +92,17 @@ function Routed() {
 
 export default function App() {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const load = () => { setState('loading'); api.init().then(() => setState('ready')).catch(() => setState('error')); };
+  const toast = useToast();
+  const [recovery, setRecovery] = useState(false);
+  const load = () => {
+    setState('loading');
+    api.init().then(() => {
+      setState('ready');
+      const n = api.takeNotice();
+      if (n) toast(n.includes('подтверждена') ? 'success' : 'error', n);
+      if (api.takeRecovery()) setRecovery(true);
+    }).catch(() => setState('error'));
+  };
   useEffect(load, []);
   if (state === 'loading') return (
     <div style={{ padding: 24 }} aria-busy="true">
@@ -104,5 +114,21 @@ export default function App() {
     </div>
   );
   if (state === 'error') return <div className="main"><Empty icon={Alert} title="Не удалось загрузить портал" text="Проверьте подключение и попробуйте снова." action={<Button onClick={load}>Повторить</Button>} /></div>;
-  return <Routed />;
+  return <><Routed />{recovery && <NewPassword onDone={() => setRecovery(false)} />}</>;
+}
+
+function NewPassword({ onDone }: { onDone: () => void }) {
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const { run, busy } = useAction();
+  const save = async () => {
+    if (pw.length < 8) return setErr('Минимум 8 символов');
+    const ok = await run('pw', () => api.setNewPassword(pw).then(() => true), 'Пароль обновлён');
+    if (ok) onDone();
+  };
+  return (
+    <Modal open onClose={onDone} title="Новый пароль" subtitle="Вы перешли по ссылке для восстановления. Задайте новый пароль" footer={<Button loading={busy === 'pw'} onClick={save}>Сохранить пароль</Button>}>
+      <Field label="Новый пароль" error={err} htmlFor="newpw"><input id="newpw" type="password" className={err ? 'input err' : 'input'} autoComplete="new-password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(null); }} /></Field>
+    </Modal>
+  );
 }
