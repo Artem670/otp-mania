@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { DB } from './types';
-import { createSeed, DB_VERSION } from './seed';
+import { ACCRUAL_CATEGORIES, createSeed, DB_VERSION, PRODUCTS, seedPulses } from './seed';
 import { docs, RemoteError, type DocRow } from './remote';
 
 /**
@@ -51,7 +51,7 @@ export function getState(): DB {
 }
 
 /* ---------- Отображение DB ↔ строки таблицы docs ---------- */
-const ARRAYS = ['users', 'departments', 'txs', 'accruals', 'conversions', 'thanks', 'products', 'orders', 'pools', 'notifications', 'events', 'news', 'goals', 'articles'] as const;
+const ARRAYS = ['users', 'departments', 'txs', 'accruals', 'conversions', 'thanks', 'products', 'orders', 'pools', 'notifications', 'events', 'news', 'goals', 'articles', 'pulses'] as const;
 type ArrKey = (typeof ARRAYS)[number];
 const key = (c: string, id: string) => c + '\u0000' + id;
 
@@ -67,7 +67,7 @@ function toRows(db: DB): Map<string, DocRow> {
 
 function emptyDB(): DB {
   const s = createSeed(); // берём настройки и справочники по умолчанию, если в базе их ещё нет
-  return { ...s, users: [], departments: [], txs: [], accruals: [], conversions: [], thanks: [], products: [], orders: [], pools: [], notifications: [], events: [], news: [], goals: [], articles: [], signalStatus: {}, carts: {}, sessionUserId: null };
+  return { ...s, users: [], departments: [], txs: [], accruals: [], conversions: [], thanks: [], products: [], orders: [], pools: [], notifications: [], events: [], news: [], goals: [], articles: [], pulses: [], signalStatus: {}, carts: {}, sessionUserId: null };
 }
 
 /** Накатывает строки на состояние: добавляет, заменяет, удаляет. */
@@ -109,6 +109,7 @@ export async function loadRemote(onProgress?: (t: string) => void): Promise<DB> 
   }
   const db = emptyDB();
   applyRows(db, rows);
+  await migrate(db);
   db.version = DB_VERSION;
   bumpSync(rows);
   mode = 'live';
@@ -117,6 +118,32 @@ export async function loadRemote(onProgress?: (t: string) => void): Promise<DB> 
   emit();
   startPolling();
   return db;
+}
+
+/**
+ * Дозаполняет базу, созданную прошлой версией сайта: пульс-опросы, лимитированные товары,
+ * категория формальных активностей. Каждый шаг выполняется один раз и не трогает чужие правки.
+ */
+async function migrate(db: DB) {
+  const now = Date.now();
+  const tryUpsert = async (rows: DocRow[], apply: () => void) => {
+    if (!rows.length) return;
+    try { await docs.upsert(rows); apply(); } catch { /* например, нет прав администратора: доделает следующий вход админа */ }
+  };
+  if (!db.pulses.length && db.users.some((u) => u.email.endsWith('@mania.demo'))) {
+    const list = seedPulses(db.users, db.accruals, db.orders, db.products, now);
+    await tryUpsert(list.map((p) => ({ collection: 'pulses', id: p.id, data: p })), () => { db.pulses = list; });
+  }
+  if (!db.products.some((p) => p.limited !== undefined)) {
+    const limited = new Set(PRODUCTS.filter((p) => p.limited).map((p) => p.id));
+    const next = db.products.filter((p) => limited.has(p.id)).map((p) => ({ ...p, limited: true }));
+    await tryUpsert(next.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { next.forEach((p) => { const i = db.products.findIndex((x) => x.id === p.id); db.products[i] = p; }); });
+  }
+  if (!db.settings.accrualCategories.some((c) => c.formal)) {
+    const formal = ACCRUAL_CATEGORIES.filter((c) => c.formal);
+    const settings = { ...db.settings, accrualCategories: [...db.settings.accrualCategories, ...formal] };
+    await tryUpsert([{ collection: 'settings', id: 'main', data: settings }], () => { db.settings = settings; });
+  }
 }
 
 /** Подтягивает чужие изменения. */

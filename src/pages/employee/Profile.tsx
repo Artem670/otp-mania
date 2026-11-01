@@ -8,6 +8,7 @@ import { ago, fmt, fmtDate, fmtNum } from '../../lib/utils';
 import { Amount, Avatar, Badge, Button, Card, Coin, Empty, Field, Modal, PageSkeleton, Progress, Seg, Stat, useAction, usePageLoading, useToast } from '../../components/ui';
 import { Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart } from '../../components/icons';
 import { SendThanksForm } from './Thanks';
+import { PulseCard } from '../../components/PulseCard';
 import type { IconType } from 'react-icons';
 
 export const TX_ICONS: Record<Tx['kind'], IconType> = {
@@ -121,6 +122,7 @@ export default function Profile() {
           <Button variant="orange" icon={HandHeart} onClick={() => setThanks(true)}>Отправить благодарность</Button>
         </div>
       </div>
+      <PulseCard />
 
       <div className="grid g-main">
         <div className="stack-16">

@@ -102,6 +102,8 @@ export interface Product {
   icon: string;
   tone: string;
   minLevel?: number; // уровень питомца, с которого товар доступен; если не задан, берётся по категории
+  limited?: boolean; // уникальная или лимитированная позиция (метрика C4)
+  stockouts?: { from: number; to?: number }[]; // периоды, когда товара не было в наличии (метрика C3)
 }
 
 export type OrderStatus = 'new' | 'processing' | 'delivered' | 'cancelled';
@@ -197,6 +199,29 @@ export interface Category {
   min?: number;
   max?: number;
   description?: string;
+  formal?: boolean; // формальная активность (метрика E3): посещение, обязательное обучение, опросы
+}
+
+/** Пульс-опрос сотрудника по шкале 1–5. */
+export type PulseQuestion = 'contribution' | 'desire';
+export interface Pulse {
+  id: string;
+  ts: number;
+  userId: string;
+  q: PulseQuestion; // contribution: «признание было про мой вклад», desire: желанность награды
+  score: number;
+  refId?: string; // начисление или заказ, о котором вопрос
+}
+
+/** Цели и пороги метрик программы. */
+export interface MetricTargets {
+  er: number; // Engagement rate, доля
+  coverage: number; // A1 охват, доля
+  csi: number; // CSI, из 5
+  bankBudgetRub: number; // бюджет программы в масштабе банка, ₽
+  mutualMax: number; // E1, доля
+  top1Max: number; // E2, доля
+  formalMax: number; // E3, доля
 }
 
 export interface Settings {
@@ -210,6 +235,7 @@ export interface Settings {
   spinPrice: number; // цена прокрутки колеса, коинов
   spinLimit: number; // прокруток в месяц на человека
   wheelPrizes: WheelPrize[];
+  metricTargets: MetricTargets;
   minCommentLength: number;
   accrualCategories: Category[];
   thanksCategories: Category[];
@@ -252,6 +278,7 @@ export interface DB {
   news: NewsItem[];
   goals: Goal[];
   articles: Article[];
+  pulses: Pulse[];
   settings: Settings;
   signalStatus: Record<string, SignalStatus>;
   carts: Record<string, CartLine[]>;

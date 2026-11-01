@@ -10,9 +10,9 @@ import { PRODUCT_ICONS } from '../../components/icons';
 import { STATUS_TONE } from '../employee/Orders';
 import { CreatePoolModal, Contributors } from '../manager/ManagerPools';
 
-type Tab = 'program' | 'rules' | 'categories' | 'products' | 'wheel' | 'orders' | 'pools';
+type Tab = 'program' | 'targets' | 'rules' | 'categories' | 'products' | 'wheel' | 'orders' | 'pools';
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'program', label: 'Программа' }, { value: 'rules', label: 'Правила' }, { value: 'categories', label: 'Категории' },
+  { value: 'program', label: 'Программа' }, { value: 'targets', label: 'Цели метрик' }, { value: 'rules', label: 'Правила' }, { value: 'categories', label: 'Категории' },
   { value: 'products', label: 'Товары' }, { value: 'wheel', label: 'Колесо удачи' }, { value: 'orders', label: 'Заказы' }, { value: 'pools', label: 'Сборы' },
 ];
 
@@ -25,6 +25,7 @@ export default function SettingsPage() {
       <PageHeader title="Настройки программы" crumbs="Администрирование" subtitle="Курс, лимиты, бюджет, правила, справочники, товары, заказы и сборы. Изменения сразу действуют во всех разделах." />
       <div style={{ overflowX: 'auto' }}><Seg value={tab} onChange={setTab} ariaLabel="Раздел настроек" options={TABS} /></div>
       {tab === 'program' && <ProgramTab />}
+      {tab === 'targets' && <TargetsTab />}
       {tab === 'rules' && <RulesTab />}
       {tab === 'categories' && <CategoriesTab />}
       {tab === 'products' && <ProductsTab />}
@@ -92,6 +93,36 @@ function ProgramTab() {
   );
 }
 
+function TargetsTab() {
+  const db = useDB();
+  const [t, setT] = useState(db.settings.metricTargets);
+  const { run, busy } = useAction();
+  const dirty = JSON.stringify(t) !== JSON.stringify(db.settings.metricTargets);
+  const P = (k: 'er' | 'coverage' | 'mutualMax' | 'top1Max' | 'formalMax', label: string, hint?: string) => (
+    <NumField label={label} hint={hint} suffix="%" step={1} value={Math.round(t[k] * 1000) / 10} onChange={(v) => setT({ ...t, [k]: v / 100 })} />
+  );
+  return (
+    <div className="grid g2">
+      <Card title="Целевые метрики" subtitle="Используются на странице «Метрики программы»">
+        <div className="col" style={{ gap: 14 }}>
+          {P('er', 'Engagement rate, цель', 'Доля сотрудников, активных в программе за месяц')}
+          {P('coverage', 'A1 Охват признанием, цель', 'Доля сотрудников с признанием за квартал')}
+          <NumField label="CSI наград, цель" step={0.05} suffix="из 5" value={t.csi} onChange={(v) => setT({ ...t, csi: v })} />
+          <NumField label="Бюджет в масштабе банка" step={1_000_000} suffix="₽" value={t.bankBudgetRub} onChange={(v) => setT({ ...t, bankBudgetRub: v })} hint="Цель по затратам D. Годовой бюджет прототипа задаётся во вкладке «Программа»" />
+        </div>
+      </Card>
+      <Card title="Пороги злоупотреблений" subtitle="Превышение подсвечивается красным и уходит на проверку">
+        <div className="col" style={{ gap: 14 }}>
+          {P('mutualMax', 'E1 Взаимные «спасибо», не больше')}
+          {P('top1Max', 'E2 Доля РуКоинов у топ-1%, не больше')}
+          {P('formalMax', 'E3 Доля за формальные активности, не больше', 'Какие категории формальные, отмечается во вкладке «Категории»')}
+        </div>
+        <div className="row mt-16"><Button disabled={!dirty} loading={busy === 't'} onClick={() => run('t', () => api.updateSettings({ metricTargets: t }), 'Цели метрик сохранены')}>Сохранить</Button>{dirty && <Button variant="ghost" onClick={() => setT(db.settings.metricTargets)}>Отменить</Button>}</div>
+      </Card>
+    </div>
+  );
+}
+
 function ListEditor({ title, items, onChange }: { title: string; items: string[]; onChange: (v: string[]) => void }) {
   return (
     <Card title={title} action={<Button size="sm" variant="secondary" icon={Plus} onClick={() => onChange([...items, ''])}>Пункт</Button>}>
@@ -135,7 +166,7 @@ function CategoriesTab() {
       <div className="col" style={{ gap: 8 }}>
         {list.map((c) => (
           <div key={c.id} className="row card soft pad-sm">
-            <div className="grow"><b className="small">{c.name}</b>{kind === 'accrual' && <div className="xs muted">{fmt(c.min ?? 0)}–{fmt(c.max ?? 0)} · {c.description}</div>}<div className="xs muted">использована {used(kind, c.id)} раз</div></div>
+            <div className="grow"><b className="small">{c.name}</b>{kind === 'accrual' && <div className="xs muted">{fmt(c.min ?? 0)}–{fmt(c.max ?? 0)} · {c.description}</div>}{c.formal && <span className="badge yellow mt-4">формальная · E3</span>}<div className="xs muted">использована {used(kind, c.id)} раз</div></div>
             <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Изменить ${c.name}`} onClick={() => setEdit({ kind, cat: c })} />
             <Button size="sm" variant="ghost" icon={Trash} aria-label={`Удалить ${c.name}`} onClick={() => setDel({ kind, cat: c })} />
           </div>
@@ -158,6 +189,7 @@ function CategoriesTab() {
                 <NumField label="До" value={edit.cat.max ?? 0} step={500} onChange={(v) => setEdit({ ...edit, cat: { ...edit.cat, max: v } })} />
               </div>
               <Field label="Когда использовать"><input className="input" value={edit.cat.description ?? ''} onChange={(e) => setEdit({ ...edit, cat: { ...edit.cat, description: e.target.value } })} /></Field>
+              <label className="row-sm small"><input type="checkbox" checked={!!edit.cat.formal} onChange={(e) => setEdit({ ...edit, cat: { ...edit.cat, formal: e.target.checked } })} /> Формальная активность (посещение, обязательное обучение, опросы): считается в пороге E3</label>
             </>}
           </div>
         )}
@@ -224,6 +256,7 @@ function ProductsTab() {
                   {PET_LEVELS.map((L, i) => <option key={i} value={i + 1}>{i + 1} · {L.title}</option>)}
                 </select>
               </Field>
+              <label className="row-sm small"><input type="checkbox" checked={!!edit.limited} onChange={(e) => setEdit({ ...edit, limited: e.target.checked })} /> Уникальная или лимитированная позиция (метрика C4)</label>
               <Field label="Описание"><textarea className="textarea" value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
             </div>
             <div className="col" style={{ gap: 12 }}>

@@ -43,6 +43,7 @@ export function useNav(me: User, signalCount: number): NavNode[] {
     {
       label: 'Администрирование', icon: Dashboard, roles: ['admin'], children: [
         { label: 'Дашборд', to: '/admin' },
+        { label: 'Метрики программы', to: '/admin/metrics' },
         { label: 'Сигналы', to: '/admin/signals', badge: signalCount },
         { label: 'Сотрудники и роли', to: '/admin/users' },
         { label: 'Настройки программы', to: '/admin/settings' },

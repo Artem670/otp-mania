@@ -1,10 +1,10 @@
 import type {
-  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Settings, Thanks, Tx, User,
+  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Pulse, Settings, Thanks, Tx, User,
 } from './types';
 import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, pickPrize } from './selectors';
 
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -82,6 +82,7 @@ export const ACCRUAL_CATEGORIES: Category[] = [
   { id: 'initiative', name: 'Инициативность', min: 2000, max: 6000, description: 'Предложил и сам внедрил улучшение' },
   { id: 'team', name: 'Достижение командных целей', min: 2000, max: 5000, description: 'Вклад в общий результат отдела' },
   { id: 'growth', name: 'Вклад в развитие компании', min: 3000, max: 8000, description: 'Наставничество, обучение, проекты на весь банк' },
+  { id: 'event', name: 'Участие в корпоративных активностях', min: 500, max: 1500, description: 'Посещение мероприятий, обязательное обучение, опросы. Формальная активность: доля ограничена порогом E3', formal: true },
 ];
 
 export const THANKS_CATEGORIES: Category[] = [
@@ -98,6 +99,7 @@ const COMMENTS: Record<string, string[]> = {
   hard: ['Перевыполнил план по кредитным картам на 18%', 'Закрыл сложную сделку с нестандартным залогом', 'Довёл релиз до продакшена без единого инцидента', 'Разобрал просроченный портфель на 40 договоров'],
   initiative: ['Автоматизировал сверку: минус 6 часов ручной работы в неделю', 'Предложил новый скрипт звонка, конверсия выросла на 9%', 'Собрал дашборд по оттоку клиентов для всего отдела', 'Запустил чек-лист проверки заявок, ошибок стало вдвое меньше'],
   team: ['Отдел закрыл квартальный план, вклад в ключевые сделки', 'Команда вышла на NPS 72, личный вклад в обработку жалоб', 'Сдали проект миграции в срок, ключевая роль в тестировании'],
+  event: ['Участие в корпоративном забеге', 'Прошёл обязательный курс по информационной безопасности', 'Заполнил ежегодный опрос вовлечённости', 'Посетил лекцию о финансовой грамотности'],
   growth: ['Провёл три обучающих сессии для новых сотрудников', 'Наставник для двух стажёров, оба вышли на план', 'Выступил на внутренней конференции с кейсом отдела'],
 };
 
@@ -113,10 +115,10 @@ const THANKS_MESSAGES = [
 ];
 
 export const PRODUCTS: Product[] = [
-  { id: 'p-hoodie', name: 'Худи «Мания»', category: 'clothes', price: 9000, costRub: 1500, stock: 40, active: true, description: 'Плотный хлопок, свободный крой, вышивка на груди. Размеры XS–XXL.', icon: 'shirt', tone: '#9E6FC3' },
+  { id: 'p-hoodie', limited: true, name: 'Худи «Мания»', category: 'clothes', price: 9000, costRub: 1500, stock: 40, active: true, description: 'Плотный хлопок, свободный крой, вышивка на груди. Размеры XS–XXL.', icon: 'shirt', tone: '#9E6FC3' },
   { id: 'p-tee', name: 'Футболка базовая', category: 'clothes', price: 3500, costRub: 600, stock: 120, active: true, description: 'Хлопок 100%, минималистичный принт на спине.', icon: 'shirt', tone: '#1F1F24' },
   { id: 'p-jacket', name: 'Флисовая куртка', category: 'clothes', price: 14000, costRub: 2600, stock: 25, active: true, description: 'Тёплая куртка на молнии для офиса и прогулок.', icon: 'snowflake', tone: '#6E6E78' },
-  { id: 'p-beanie', name: 'Шапка-бини', category: 'clothes', price: 2500, costRub: 400, stock: 60, active: true, description: 'Мягкая вязка, нашивка с логотипом программы.', icon: 'snowflake', tone: '#FF6A13' },
+  { id: 'p-beanie', limited: true, name: 'Шапка-бини', category: 'clothes', price: 2500, costRub: 400, stock: 60, active: true, description: 'Мягкая вязка, нашивка с логотипом программы.', icon: 'snowflake', tone: '#FF6A13' },
   { id: 'p-mug', name: 'Термокружка 400 мл', category: 'accessories', price: 2800, costRub: 450, stock: 90, active: true, description: 'Держит тепло до 6 часов, подходит для кофемашины.', icon: 'coffee', tone: '#6E9E00' },
   { id: 'p-backpack', name: 'Рюкзак для ноутбука', category: 'accessories', price: 8500, costRub: 1600, stock: 35, active: true, description: 'Отделение под ноутбук 16", карман для зарядки, влагозащита.', icon: 'backpack', tone: '#1F1F24' },
   { id: 'p-umbrella', name: 'Зонт-автомат', category: 'accessories', price: 3200, costRub: 550, stock: 50, active: true, description: 'Купол 105 см, система антиветер.', icon: 'umbrella', tone: '#8E8E99' },
@@ -134,9 +136,9 @@ export const PRODUCTS: Product[] = [
   { id: 'p-notebook', name: 'Блокнот в точку', category: 'merch', price: 1200, costRub: 200, stock: 140, active: true, description: 'Формат A5, 160 страниц, твёрдая обложка.', icon: 'notebook', tone: '#1F1F24' },
   { id: 'p-pet', name: 'Набор для питомца', category: 'merch', price: 1800, costRub: 300, stock: 60, active: true, description: 'Миска и бандана с принтом программы.', icon: 'paw', tone: '#6E6E78' },
   { id: 'p-dayoff', name: 'Дополнительный выходной', category: 'experiences', price: 12000, costRub: 0, stock: 999, active: true, description: 'Согласуется с руководителем. Не чаще раза в квартал.', icon: 'palm', tone: '#6E9E00' },
-  { id: 'p-lunch', name: 'Обед с членом правления', category: 'experiences', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
+  { id: 'p-lunch', limited: true, name: 'Обед с членом правления', category: 'experiences', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
   { id: 'p-masterclass', name: 'Мастер-класс по выбору', category: 'experiences', price: 7000, costRub: 1200, stock: 30, active: true, description: 'Гончарный, кулинарный или фото.', icon: 'sparkles', tone: '#FF6A13' },
-  { id: 'p-ski', name: 'Выезд на горнолыжку с командой', category: 'experiences', price: 80000, costRub: 15000, stock: 6, active: true, description: 'Выходные на курорте для команды до 6 человек.', icon: 'mountain', tone: '#3A3A42' },
+  { id: 'p-ski', limited: true, name: 'Выезд на горнолыжку с командой', category: 'experiences', price: 80000, costRub: 15000, stock: 6, active: true, description: 'Выходные на курорте для команды до 6 человек.', icon: 'mountain', tone: '#3A3A42' },
 ];
 
 const SETTINGS: Settings = {
@@ -150,6 +152,7 @@ const SETTINGS: Settings = {
   minCommentLength: 20,
   spinPrice: 1000,
   spinLimit: 20,
+  metricTargets: { er: 0.75, coverage: 0.85, csi: 4.85, bankBudgetRub: 34_000_000, mutualMax: 0.15, top1Max: 0.05, formalMax: 0.15 },
   wheelPrizes: [
     { id: 'w-badge', name: 'Бейдж или рамка в профиле', short: 'Бейдж', prob: 28, costRub: 0, digital: true },
     { id: 'w-stickers', name: 'Значок или стикерпак ОТуПик', short: 'Стикерпак', prob: 21, costRub: 40 },
@@ -289,9 +292,11 @@ export function createSeed(now = Date.now()): DB {
     if (status === 'delivered') o.csi = r() < 0.75 ? 5 : r() < 0.7 ? 4 : 3;
     orders.push(o);
     u.coins -= total; p.stock -= qty;
+    if (p.stock === 0) (p.stockouts ??= []).push({ from: ts });
     txs.push({ id: id('tx'), ts, userId: u.id, kind: 'order', currency: 'coins', amount: -total, title: `Заказ: ${p.name}`, refId: o.id });
     if (status === 'cancelled') {
       u.coins += total; p.stock += qty;
+      const open = p.stockouts?.find((x) => !x.to); if (open) open.to = ts + DAY;
       txs.push({ id: id('tx'), ts: ts + DAY, userId: u.id, kind: 'refund', currency: 'coins', amount: total, title: `Возврат за отменённый заказ`, refId: o.id });
     }
     touch(u, ts);
@@ -451,6 +456,15 @@ export function createSeed(now = Date.now()): DB {
   ms.coins += 420000;
   txs.push({ id: id('tx'), ts: START, userId: ms.id, kind: 'conversion_in', currency: 'coins', amount: 420000, title: 'Перенос баланса из старой программы' });
 
+  // Дефицит (C3): худи из лимитированного дропа и наушники заканчивались, обеды с правлением разобраны до конца квартала
+  const P = (pid: string) => products.find((x) => x.id === pid)!;
+  (P('p-hoodie').stockouts ??= []).push({ from: now - 44 * DAY, to: now - 31 * DAY });
+  (P('p-headphones').stockouts ??= []).push({ from: now - 26 * DAY, to: now - 17 * DAY });
+  const lunch = P('p-lunch');
+  if (lunch.stock > 0) { lunch.stock = 0; (lunch.stockouts ??= []).push({ from: now - 19 * DAY }); }
+
+  const pulses = seedPulses(users, accruals, orders, products, now);
+
   const notifications = [
     { id: id('nt'), userId: demo.id, ts: now - 2 * DAY, text: 'Ирина Белова начислила вам 4 500 РуКоинов: Инициативность', read: false, link: '/cabinet' },
     { id: id('nt'), userId: demo.id, ts: now - 5 * DAY, text: 'Новый сбор: «Кофемашина на третий этаж»', read: true, link: '/cabinet/pools' },
@@ -483,9 +497,34 @@ export function createSeed(now = Date.now()): DB {
     news: NEWS.map((x, i) => ({ ...x, ts: now - (i * 3 + 1) * DAY })),
     goals: GOALS,
     articles: ARTICLES,
+    pulses,
     settings: { ...SETTINGS, managerFunds },
     signalStatus: {},
     carts: {},
     sessionUserId: null,
   };
+}
+
+/**
+ * Ответы на пульс-опросы для стартовых данных (B2 и желанность наград).
+ * Используется и при первом запуске, и для дозаполнения уже созданной общей базы.
+ */
+export function seedPulses(users: User[], accruals: Accrual[], orders: Order[], products: Product[], now = Date.now()): Pulse[] {
+  const r = mulberry32(7202611);
+  const out: Pulse[] = [];
+  const known = new Set(users.filter((u) => now - u.lastActiveAt < 90 * DAY).map((u) => u.id)); // неактивные на опросы не отвечают
+  const formal = new Set(ACCRUAL_CATEGORIES.filter((c) => c.formal).map((c) => c.id));
+  const score = (base: number) => Math.max(1, Math.min(5, Math.round(base + (r() - 0.5) * 1.6)));
+  for (const a of accruals) {
+    if (!known.has(a.employeeId) || now - a.ts > 150 * DAY || now - a.ts < 4 * DAY || r() > 0.5) continue; // на свежие ещё не ответили
+    const meaningful = a.comment.trim().length >= 20 && !formal.has(a.categoryId);
+    out.push({ id: 'pl_' + a.id, ts: a.ts + Math.floor(r() * 2 * DAY), userId: a.employeeId, q: 'contribution', score: score(meaningful ? 4.6 : 2.4), refId: a.id });
+  }
+  for (const o of orders) {
+    if (o.wheel || o.status !== 'delivered' || !known.has(o.userId) || now - o.ts > 150 * DAY || r() > 0.55) continue;
+    const p = products.find((x) => x.id === o.items[0]?.productId);
+    const base = p?.limited ? 4.9 : p?.category === 'certificates' ? 4.6 : p?.category === 'merch' ? 3.6 : 4.2;
+    out.push({ id: 'pl_' + o.id, ts: o.ts + Math.floor((3 + r() * 8) * DAY), userId: o.userId, q: 'desire', score: score(base), refId: o.id });
+  }
+  return out.filter((p) => p.ts < now).sort((a, b) => a.ts - b.ts);
 }

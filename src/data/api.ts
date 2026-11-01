@@ -2,7 +2,7 @@ import { commit, getMode, getState, leaveLive, loadRemote, loadState, pull, rese
 import { auth, docs, getSession, remoteEnabled } from './remote';
 import { DEPTS_PUBLIC } from './seed';
 import { ApiError } from './errors';
-import type { Category, DB, OrderStatus, Product, Role, Settings, SignalStatus, User } from './types';
+import type { Category, DB, OrderStatus, Product, PulseQuestion, Role, Settings, SignalStatus, User } from './types';
 import { cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
 import { uid } from '../lib/utils';
 
@@ -26,6 +26,12 @@ function requireUser(db: DB, id = db.sessionUserId) {
 const notify = (db: DB, userId: string, text: string, link?: string) =>
   db.notifications.push({ id: uid('nt'), userId, ts: Date.now(), text, read: false, link });
 const touch = (db: DB, userId: string) => { const u = db.users.find((x) => x.id === userId); if (u) u.lastActiveAt = Date.now(); };
+/** Учёт дефицита (C3): открывает период «нет в наличии», когда остаток стал нулевым, и закрывает при пополнении. */
+function trackStock(p: Product, ts = Date.now()) {
+  const open = p.stockouts?.find((x) => !x.to);
+  if (p.stock <= 0 && !open) (p.stockouts ??= []).push({ from: ts });
+  if (p.stock > 0 && open) open.to = ts;
+}
 const isPositiveInt = (n: number) => Number.isFinite(n) && n > 0 && Math.floor(n) === n;
 
 let recoveryPending = false;
@@ -233,7 +239,7 @@ export const api = {
     await commit((d) => {
       const x = requireUser(d);
       x.coins -= cart.total;
-      for (const l of cart.lines) d.products.find((p) => p.id === l.productId)!.stock -= l.qty;
+      for (const l of cart.lines) { const p = d.products.find((y) => y.id === l.productId)!; p.stock -= l.qty; trackStock(p); }
       d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: cart.total, status: 'new', items: cart.lines.map((l) => ({ productId: l.productId, name: l.product.name, qty: l.qty, price: l.product.price, costRub: l.product.costRub })) });
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -cart.total, title: `Заказ из ${cart.count} поз.`, refId: orderId });
       d.carts[x.id] = [];
@@ -241,6 +247,19 @@ export const api = {
       touch(d, x.id);
     });
     return orderId;
+  },
+  /** Ответ на пульс-опрос: «признание было про мой вклад» или желанность награды. */
+  async answerPulse(q: PulseQuestion, refId: string, score: number) {
+    await wait(200);
+    if (!(score >= 1 && score <= 5 && Math.floor(score) === score)) fail('Оценка от 1 до 5');
+    await commit((d) => {
+      const u = requireUser(d);
+      if (q === 'contribution' && !d.accruals.some((a) => a.id === refId && a.employeeId === u.id)) fail('Начисление не найдено');
+      if (q === 'desire' && !d.orders.some((o) => o.id === refId && o.userId === u.id)) fail('Заказ не найден');
+      if (d.pulses.some((p) => p.userId === u.id && p.refId === refId && p.q === q)) fail('Вы уже ответили на этот вопрос');
+      d.pulses.push({ id: uid('pl'), ts: Date.now(), userId: u.id, q, score, refId });
+      touch(d, u.id);
+    });
   },
   async rateOrder(orderId: string, csi: number) {
     await wait(200);
@@ -493,6 +512,10 @@ export const api = {
     if (s.wheelPrizes.some((p) => !(p.prob >= 0))) fail('Вероятности призов не могут быть отрицательными');
     if (Math.abs(probSum - 100) > 0.01) fail(`Сумма вероятностей призов должна быть 100%, сейчас ${probSum.toFixed(1).replace('.', ',')}%`);
     if (!isPositiveInt(s.quarterFundDefault)) fail('Фонд по умолчанию: целое число');
+    const t = s.metricTargets;
+    if ([t.er, t.coverage, t.mutualMax, t.top1Max, t.formalMax].some((v) => !(v >= 0 && v <= 1))) fail('Цели и пороги в процентах: от 0 до 100');
+    if (!(t.csi > 0 && t.csi <= 5)) fail('Цель CSI: от 0 до 5');
+    if (!(t.bankBudgetRub > 0)) fail('Укажите бюджет программы в масштабе банка');
     if (Object.values(s.managerFunds).some((v) => !(v >= 0))) fail('Фонды руководителей не могут быть отрицательными');
     if (s.rules.some((r) => !r.trim()) || s.forbidden.some((r) => !r.trim())) fail('Уберите пустые пункты правил');
     await commit((d) => { d.settings = s; });
@@ -528,7 +551,9 @@ export const api = {
     if (!(p.stock >= 0) || Math.floor(p.stock) !== p.stock) fail('Остаток: целое число от нуля');
     await commit((d) => {
       const i = d.products.findIndex((x) => x.id === p.id);
-      if (i >= 0) d.products[i] = { ...p, name: p.name.trim() }; else d.products.push({ ...p, id: uid('p'), name: p.name.trim() });
+      const next = { ...p, name: p.name.trim(), stockouts: i >= 0 ? structuredClone(d.products[i].stockouts) : undefined };
+      trackStock(next);
+      if (i >= 0) d.products[i] = next; else d.products.push({ ...next, id: uid('p') });
     });
   },
   async setOrderStatus(orderId: string, status: OrderStatus) {
@@ -544,7 +569,7 @@ export const api = {
       if (status === 'cancelled') {
         const u = d.users.find((y) => y.id === x.userId)!;
         u.coins += x.total;
-        x.items.forEach((i) => { const p = d.products.find((y) => y.id === i.productId); if (p) p.stock += i.qty; });
+        x.items.forEach((i) => { const p = d.products.find((y) => y.id === i.productId); if (p) { p.stock += i.qty; trackStock(p); } });
         d.txs.push({ id: uid('tx'), ts: Date.now(), userId: u.id, kind: 'refund', currency: 'coins', amount: x.total, title: 'Возврат за отменённый заказ', refId: x.id });
         notify(d, u.id, `Заказ отменён, ${x.total.toLocaleString('ru-RU')} коинов вернулись на баланс`, '/cabinet/orders');
       } else notify(d, x.userId, `Статус заказа: ${status === 'processing' ? 'собирается' : status === 'delivered' ? 'выдан, оцените его' : 'новый'}`, '/cabinet/orders');

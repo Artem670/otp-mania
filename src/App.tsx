@@ -26,6 +26,7 @@ import Dashboard from './pages/admin/Dashboard';
 import Signals from './pages/admin/Signals';
 import UsersAdmin from './pages/admin/Users';
 import SettingsPage from './pages/admin/Settings';
+import MetricsPage from './pages/admin/Metrics';
 import { NewsPage, EventsPage, StrategyPage, KbPage } from './pages/portal/Portal';
 import Employees from './pages/portal/Employees';
 
@@ -52,6 +53,7 @@ const ROUTES: R[] = [
   { pattern: '/manager/rules', roles: ['manager'], render: () => <Rules /> },
   { pattern: '/manager/pools', roles: ['manager'], render: () => <ManagerPools /> },
   { pattern: '/admin', roles: ['admin'], render: () => <Dashboard /> },
+  { pattern: '/admin/metrics', roles: ['admin'], render: () => <MetricsPage /> },
   { pattern: '/admin/signals', roles: ['admin'], render: () => <Signals /> },
   { pattern: '/admin/users', roles: ['admin'], render: () => <UsersAdmin /> },
   { pattern: '/admin/settings', roles: ['admin'], render: () => <SettingsPage /> },
