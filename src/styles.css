@@ -73,6 +73,7 @@ a { color: inherit; }
 .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .g-main { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.grid > *, .row > .grow, .col > * { min-width: 0; }
 .mt-4 { margin-top: 4px; } .mt-8 { margin-top: 8px; } .mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; } .mt-24 { margin-top: 24px; }
 .mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; } .mb-16 { margin-bottom: 16px; }
 
@@ -568,3 +569,19 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 [data-theme="dark"] .tl-d { display: block !important; }
 .team-credit { display: inline-flex; align-items: center; gap: 10px; }
 .sidebar-credit { margin-top: 18px; padding: 4px 14px 0; }
+
+/* Телефон: сотрудники в одну колонку, широкие таблицы карточками */
+@media (max-width: 520px) { .people-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .table.stacked, .table.stacked tbody { display: block; width: 100%; }
+  .table.stacked thead { display: none; }
+  .table.stacked tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .table.stacked tr:last-child { border-bottom: 0; }
+  .table.stacked td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 14px; border: 0; text-align: right; min-height: 0; }
+  .table.stacked td > * { max-width: 70%; }
+  .table.stacked td::before { content: attr(data-label); color: var(--muted); font-size: 12px; text-align: left; flex: none; max-width: 40%; }
+  .table.stacked td:first-child { text-align: left; justify-content: flex-start; font-weight: 600; }
+  .table.stacked td:first-child::before { display: none; }
+  .table.stacked td:first-child > * { max-width: 100%; }
+  .table.stacked tbody tr:hover td { background: none; }
+}

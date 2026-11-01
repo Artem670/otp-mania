@@ -31,9 +31,9 @@ export default function Employees({ openId }: { openId?: string }) {
           <div className="input-wrap" style={{ width: 260 }}><Search size={16} /><input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Имя или должность" aria-label="Поиск сотрудника" /></div>
           <select className="select" style={{ width: 240 }} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Подразделение"><option value="all">Все подразделения</option>{db.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
         </>} />
-      {loading ? <div className="grid g4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} h={150} r={22} />)}</div>
+      {loading ? <div className="grid g4 people-grid">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} h={150} r={22} />)}</div>
         : list.length ? (
-          <div className="grid g4">
+          <div className="grid g4 people-grid">
             {list.map((x) => (
               <button key={x.id} className="card pad-sm" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/employees/${x.id}`)}>
                 <div className="row"><Avatar user={x} size={44} /><div className="grow" style={{ minWidth: 0 }}><b className="ellipsis" style={{ display: 'block' }}>{x.name}</b><div className="xs muted ellipsis">{x.title}</div></div></div>
