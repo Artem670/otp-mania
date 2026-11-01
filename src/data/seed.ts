@@ -5,7 +5,8 @@ import { ARTICLES } from './articles';
 import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, pickPrize } from './selectors';
 
-export const DB_VERSION = 7;
+// Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
+export const DB_VERSION = 8;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {

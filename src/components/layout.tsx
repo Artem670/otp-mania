@@ -8,8 +8,10 @@ import { useRouter } from '../lib/router';
 import { ago, cx, fmt } from '../lib/utils';
 import { Avatar, Coin, ThemeToggle, useAction } from './ui';
 import { OtpLogo } from './brand';
+import { toggleTheme, useTheme } from '../lib/theme';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
+  Sun, Moon,
 } from './icons';
 import type { IconType } from 'react-icons';
 
@@ -141,6 +143,7 @@ function GlobalSearch({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: (
 function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
   const db = useDB();
   const { navigate } = useRouter();
+  const theme = useTheme();
   const [pop, setPop] = useState<null | 'notif' | 'user'>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const { run, busy } = useAction();
@@ -171,7 +174,7 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
           <button onClick={() => navigate('/cabinet')} aria-label={`РуКоины: ${fmt(me.rucoins)}`}><Coin ru /><span className="num">{fmt(me.rucoins)}</span><span className="lbl muted" style={{ fontWeight: 500 }}>РуКоинов</span></button>
         </div>
         <ThemeToggle />
-        <button className="icon-btn" onClick={() => navigate('/cabinet/cart')} aria-label={`Корзина, товаров: ${cart.count}`}>
+        <button className="icon-btn cart-btn" onClick={() => navigate('/cabinet/cart')} aria-label={`Корзина, товаров: ${cart.count}`}>
           <Cart size={18} />{cart.count > 0 && <span className="dot">{cart.count}</span>}
         </button>
         <button className="icon-btn" onClick={() => { setPop(pop === 'notif' ? null : 'notif'); if (pop !== 'notif') setTimeout(() => { api.markNotificationsRead().catch(() => {}); }, 1200); }} aria-label={`Уведомления, непрочитанных: ${unread}`} aria-expanded={pop === 'notif'}>
@@ -211,6 +214,8 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
             <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
             <button className="menu-item" onClick={() => run('reset', async () => { await api.resetDemo(); setPop(null); navigate('/'); }, 'Демо-данные восстановлены')}><Reset size={16} />Сбросить демо-данные</button>
             </> : <div className="nav-label" style={{ paddingTop: 8 }}>Рабочий режим: данные в общей базе</div>}
+            <button className="menu-item cart-item" onClick={() => { setPop(null); navigate('/cabinet/cart'); }}><Cart size={16} />Корзина{cart.count ? ` · ${cart.count}` : ''}</button>
+            <button className="menu-item theme-item" onClick={() => toggleTheme()}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button>
             <button className="menu-item" onClick={() => run('logout', async () => { await api.logout(); navigate('/'); })}><LogOut size={16} />Выйти</button>
           </div>
         )}

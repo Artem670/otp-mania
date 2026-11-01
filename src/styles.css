@@ -383,8 +383,9 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .g4 { grid-template-columns: 1fr 1fr; }
   .wallets { grid-template-columns: 1fr; }
   .topbar { padding: 0 12px; gap: 8px; }
-  .balance-chip { padding: 0 10px; }
-  .balance-chip.ru { display: none; }
+  .balance-chip { padding: 0 9px; gap: 4px; font-size: 12.5px; height: 34px; }
+  .topbar .theme-toggle { display: none; }
+  .popover .menu-item.theme-item { display: flex; }
   .podium { grid-template-columns: 1fr; }
   .podium-item.p1 { order: -1; }
   .facts { grid-template-columns: 1fr 1fr 1fr; }
@@ -548,3 +549,13 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .kb-mini svg { flex: none; margin-top: 2px; }
 @media (max-width: 1180px) { .kb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kb-layout { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .kb-grid { grid-template-columns: minmax(0, 1fr); } .kb-article { padding: 22px 18px; } .kb-article h1 { font-size: 24px; } }
+.menu-item.theme-item { display: none; }
+@media (max-width: 380px) { .topbar .menu-toggle[aria-label='Поиск'] { display: none; } }
+@media (max-width: 480px) {
+  .topbar .logo { flex: none; }
+  .top-actions { gap: 6px; min-width: 0; }
+  .top-actions .icon-btn, .topbar .avatar-btn { width: 34px; height: 34px; }
+  .topbar .cart-btn { display: none; }
+  .popover .menu-item.cart-item { display: flex; }
+}
+.menu-item.cart-item { display: none; }

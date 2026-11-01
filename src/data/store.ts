@@ -38,6 +38,14 @@ export function loadState(): DB {
         emit();
         return state;
       }
+      // Данные прошлой версии: пересоздаём песочницу, но оставляем человека в том же демо-аккаунте
+      if (parsed && parsed.sessionUserId) {
+        state = createSeed();
+        if (state.users.some((u) => u.id === parsed.sessionUserId)) state.sessionUserId = parsed.sessionUserId;
+        persist();
+        emit();
+        return state;
+      }
     }
   } catch { persistOk = false; }
   state = createSeed();
