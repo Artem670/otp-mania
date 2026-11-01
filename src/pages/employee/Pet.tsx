@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
 import { me as selectMe, petLevel, PET_LEVELS } from '../../data/selectors';
 import { fmt } from '../../lib/utils';
 import { Badge, Button, Card, Coin, Field, PageHeader, PageSkeleton, Progress, useAction, usePageLoading, useToast } from '../../components/ui';
-import { Cookie, Puzzle, Trees, Pencil, Check } from './petIcons';
+import { Cookie, Puzzle, Trees, Pencil, Check, Lock } from './petIcons';
+import puffMain from '../../assets/pet/main.jpg';
+import puffJoy from '../../assets/pet/joy.jpg';
+import puffCurious from '../../assets/pet/curious.jpg';
+import puffCare from '../../assets/pet/care.jpg';
+import puffCard from '../../assets/pet/card.jpg';
+import puffGoal from '../../assets/pet/goal.jpg';
 
 const ACTIONS = [
   { id: 'feed', label: 'Покормить', cost: 500, xp: 500, icon: Cookie },
@@ -12,27 +18,19 @@ const ACTIONS = [
   { id: 'walk', label: 'Прогулка', cost: 3000, xp: 3400, icon: Trees },
 ];
 
-export function PetSvg({ level, happy, size = 220 }: { level: number; happy: boolean; size?: number }) {
-  const hats = [
-    null,
-    <path key="h" d="M70 44 L100 14 L130 44 Z" fill="#16161a" />,
-    <g key="h"><path d="M66 46 L100 10 L134 46 Z" fill="#9e6fc3" /><circle cx="100" cy="10" r="6" fill="#16161a" /></g>,
-    <path key="h" d="M62 46 L72 18 L86 36 L100 12 L114 36 L128 18 L138 46 Z" fill="#16161a" />,
-    <g key="h"><path d="M60 46 L70 16 L85 34 L100 6 L115 34 L130 16 L140 46 Z" fill="#9e6fc3" /><circle cx="100" cy="8" r="6" fill="#16161a" /><circle cx="70" cy="18" r="4" fill="#16161a" /><circle cx="130" cy="18" r="4" fill="#16161a" /></g>,
-    <g key="h"><path d="M58 46 L68 12 L84 32 L100 2 L116 32 L132 12 L142 46 Z" fill="#16161a" /><circle cx="100" cy="4" r="7" fill="#9e6fc3" /><circle cx="68" cy="14" r="5" fill="#9e6fc3" /><circle cx="132" cy="14" r="5" fill="#9e6fc3" /><rect x="58" y="40" width="84" height="8" rx="4" fill="#9e6fc3" /></g>,
-  ];
-  return (
-    <svg width={size} height={size} viewBox="0 0 200 200" role="img" aria-label={`Питомец, уровень ${level}`}>
-      <ellipse cx="100" cy="184" rx="58" ry="9" fill="#16161a" opacity=".08" />
-      <circle cx="100" cy="106" r="70" fill="#c1ff05" />
-      <circle cx="100" cy="106" r="56" fill="none" stroke="#8dba00" strokeWidth="4" strokeDasharray="6 7" />
-      <ellipse cx="78" cy="98" rx="9" ry="12" fill="#16161a" /><ellipse cx="122" cy="98" rx="9" ry="12" fill="#16161a" />
-      <circle cx="81" cy="93" r="3" fill="#fff" /><circle cx="125" cy="93" r="3" fill="#fff" />
-      <path d={happy ? 'M84 126 Q100 140 116 126' : 'M86 132 Q100 122 114 132'} stroke="#16161a" strokeWidth="5" fill="none" strokeLinecap="round" />
-      <ellipse cx="64" cy="120" rx="9" ry="6" fill="#9e6fc3" opacity=".35" /><ellipse cx="136" cy="120" rx="9" ry="6" fill="#9e6fc3" opacity=".35" />
-      {hats[level - 1]}
-    </svg>
-  );
+/** Позы тупика ОТуПика: настроение питомца и стикеры, которые открываются с уровнями. */
+export const PET_POSES = [
+  { id: 'main', src: puffMain, title: 'Ближе к важному', level: 1 },
+  { id: 'joy', src: puffJoy, title: 'Радостно', level: 2 },
+  { id: 'curious', src: puffCurious, title: 'Любопытно', level: 3 },
+  { id: 'care', src: puffCare, title: 'Забота', level: 4 },
+  { id: 'card', src: puffCard, title: 'Удобно', level: 5 },
+  { id: 'goal', src: puffGoal, title: 'Вместе к целям', level: 6 },
+] as const;
+
+export function PetImage({ pose = 'main', size = 300 }: { pose?: (typeof PET_POSES)[number]['id']; size?: number }) {
+  const p = PET_POSES.find((x) => x.id === pose)!;
+  return <img className={pose === 'main' ? 'pet-img' : 'pet-img bust'} src={p.src} alt={`ОТуПик: ${p.title.toLowerCase()}`} style={{ height: size, maxHeight: '100%', width: 'auto', display: 'block' }} />;
 }
 
 export default function PetPage() {
@@ -44,6 +42,8 @@ export default function PetPage() {
   const [bounce, setBounce] = useState(0);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(u.pet.name);
+  const [joy, setJoy] = useState(false);
+  useEffect(() => { if (!joy) return; const t = setTimeout(() => setJoy(false), 2600); return () => clearTimeout(t); }, [joy, bounce]);
   if (loading) return <PageSkeleton />;
   const lvl = petLevel(u.pet.xp);
   const cur = PET_LEVELS[lvl - 1].xp, next = PET_LEVELS[lvl]?.xp;
@@ -54,6 +54,7 @@ export default function PetPage() {
     const ok = await run(a.id, () => api.feedPet(a.cost, a.xp, a.label.toLowerCase()).then(() => true));
     if (ok) {
       setBounce((b) => b + 1);
+      setJoy(true);
       const after = petLevel(u.pet.xp + a.xp);
       toast('success', after > before ? `${u.pet.name} вырос до уровня ${after}: ${PET_LEVELS[after - 1].perk.toLowerCase()}` : `+${fmt(a.xp)} опыта`);
     }
@@ -63,7 +64,7 @@ export default function PetPage() {
       <PageHeader title={`Питомец ${u.pet.name}`} subtitle="Коины на питомца не стоят банку денег. Каждый уровень открывает новую витрину магазина: от мерча до сертификатов." />
       <div className="grid g2">
         <div className="pet-stage">
-          <div key={bounce} className={bounce ? 'pet-bounce' : undefined}><PetSvg level={lvl} happy={hours < 72} /></div>
+          <div key={bounce} className={bounce ? 'pet-bounce' : undefined}><PetImage pose={joy ? 'joy' : hours < 24 ? 'main' : hours < 72 ? 'curious' : 'care'} size={joy || hours >= 24 ? 330 : 400} /></div>
           <div style={{ position: 'absolute', top: 16, left: 16 }}><Badge tone="dark">Уровень {lvl} · {PET_LEVELS[lvl - 1].title}</Badge></div>
           <div className="card pad-sm" style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}><span className="small">{mood}</span></div>
         </div>
@@ -90,6 +91,17 @@ export default function PetPage() {
               ))}
             </div>
             <div className="small muted mt-12">На балансе {fmt(u.coins)} коинов</div>
+          </Card>
+          <Card title="Стикеры ОТуПика" subtitle="Новая эмоция с каждым уровнем">
+            <div className="pet-stickers">
+              {PET_POSES.map((p) => (
+                <div key={p.id} className={lvl >= p.level ? 'pet-sticker' : 'pet-sticker locked'} title={lvl >= p.level ? p.title : `Откроется на ${p.level} уровне`}>
+                  <img src={p.src} alt={p.title} />
+                  {lvl < p.level && <span className="pet-lock"><Lock size={14} /> ур. {p.level}</span>}
+                  <span className="xs">{p.title}</span>
+                </div>
+              ))}
+            </div>
           </Card>
           <Card title="Уровни и витрины магазина" subtitle="Растите питомца, чтобы открыть новые товары">
             <div className="col" style={{ gap: 8 }}>

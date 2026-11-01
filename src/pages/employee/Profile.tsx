@@ -9,6 +9,7 @@ import { Amount, Avatar, Badge, Button, Card, Coin, Empty, Field, Modal, PageSke
 import { Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart } from '../../components/icons';
 import { SendThanksForm } from './Thanks';
 import { PulseCard } from '../../components/PulseCard';
+import { CharityBanner } from '../../components/CharityBanner';
 import type { IconType } from 'react-icons';
 
 export const TX_ICONS: Record<Tx['kind'], IconType> = {
@@ -122,6 +123,7 @@ export default function Profile() {
           <Button variant="orange" icon={HandHeart} onClick={() => setThanks(true)}>Отправить благодарность</Button>
         </div>
       </div>
+      <CharityBanner />
       <PulseCard />
 
       <div className="grid g-main">

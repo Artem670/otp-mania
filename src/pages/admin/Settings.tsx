@@ -221,7 +221,7 @@ function ProductsTab() {
           <tbody>
             {list.map((p) => (
               <tr key={p.id}>
-                <td><div className="row-sm"><span style={{ width: 36, height: 36, borderRadius: 10, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt icon={p.icon} tone={p.tone} /></span><span className="small strong">{p.name}</span></div></td>
+                <td><div className="row-sm"><span style={{ width: 36, height: 36, borderRadius: 10, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt id={p.id} icon={p.icon} tone={p.tone} /></span><span className="small strong">{p.name}</span></div></td>
                 <td className="small">{CATEGORY_LABELS[p.category]}</td>
                 <td className="right num">{fmt(p.price)}</td>
                 <td className="right num">{fmt(p.costRub)} ₽</td>
@@ -260,7 +260,7 @@ function ProductsTab() {
               <Field label="Описание"><textarea className="textarea" value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
             </div>
             <div className="col" style={{ gap: 12 }}>
-              <div style={{ aspectRatio: '1.3', position: 'relative', borderRadius: 16, overflow: 'hidden' }}><ProductArt icon={edit.icon} tone={edit.tone} /></div>
+              <div style={{ aspectRatio: '1.3', position: 'relative', borderRadius: 16, overflow: 'hidden' }}><ProductArt id={edit.id || undefined} icon={edit.icon} tone={edit.tone} /></div>
               <div className="label">Иллюстрация</div>
               <div className="chips">{Object.entries(PRODUCT_ICONS).map(([k, I]) => <button key={k} className={cx('chip', edit.icon === k && 'on')} style={{ width: 38, padding: 0, justifyContent: 'center' }} aria-label={k} onClick={() => setEdit({ ...edit, icon: k })}><I size={16} /></button>)}</div>
               <div className="chips">{['#9E6FC3', '#6F3FA0', '#FF6A13', '#6E9E00', '#1F1F24', '#3A3A42', '#6E6E78', '#8E8E99'].map((c) => <button key={c} className={cx('chip', edit.tone === c && 'on')} style={{ width: 34, padding: 0, background: c, borderColor: edit.tone === c ? '#16161a' : c }} aria-label={`Цвет ${c}`} onClick={() => setEdit({ ...edit, tone: c })}>{edit.tone === c && <Check size={14} color="#fff" />}</button>)}</div>

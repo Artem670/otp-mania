@@ -174,30 +174,32 @@ export function metricsTree(db: DB, now = Date.now()) {
   const spendTx = db.txs.filter((t) => t.ts >= d365 && t.currency === 'coins' && t.amount < 0 && SPEND_KINDS.includes(t.kind));
   const prodOf = new Map(db.products.map((p) => [p.id, p]));
   const orderOf = new Map(db.orders.map((o) => [o.id, o]));
-  let cert = 0, limited = 0, pet = 0, wheel = 0, pools = 0, other = 0;
+  let cert = 0, limited = 0, pet = 0, wheel = 0, pools = 0, other = 0, charity = 0;
+  const poolKind = new Map(db.pools.map((p) => [p.id, p.kind ?? 'team']));
   for (const t of spendTx) {
     const v = -t.amount;
     if (t.kind === 'pet') { pet += v; continue; }
     if (t.kind === 'wheel') { wheel += v; continue; }
-    if (t.kind === 'pool') { pools += v; continue; }
+    if (t.kind === 'pool') { if (t.refId && poolKind.get(t.refId) === 'charity') charity += v; else pools += v; continue; }
     const o = t.refId ? orderOf.get(t.refId) : undefined;
     if (!o || o.status === 'cancelled') continue;
     for (const i of o.items) {
       const p = prodOf.get(i.productId); const iv = i.price * i.qty;
-      if (p?.category === 'certificates') cert += iv; else if (p?.limited) limited += iv; else other += iv;
+      if (p?.category === 'charity') charity += iv; else if (p?.category === 'certificates') cert += iv; else if (p?.limited) limited += iv; else other += iv;
     }
   }
-  const spendTotal = cert + limited + pet + wheel + pools + other;
+  const spendTotal = cert + limited + pet + wheel + pools + other + charity;
   const share = (v: number) => (spendTotal ? v / spendTotal : 0);
   const c4: Metric = {
-    code: 'C4', name: 'Структура трат', formula: 'Доли коинов за год: сертификаты, уникальные и лимитированные вещи, тамагочи, колесо, сборы, остальное',
+    code: 'C4', name: 'Структура трат', formula: 'Доли коинов за год: сертификаты, уникальные и лимитированные вещи, тамагочи, колесо, командные сборы, благотворительность, остальное',
     value: share(cert), display: pct(share(cert)), baseline: 'сертификаты 81%', status: 'info', hint: 'доля сертификатов; в банке сейчас 81%',
     parts: [
       { label: 'Сертификаты', value: share(cert), color: '#16161a' },
       { label: 'Уникальные и лимитированные', value: share(limited), color: '#9e6fc3' },
       { label: 'Тамагочи', value: share(pet), color: '#c1ff05' },
       { label: 'Колесо удачи', value: share(wheel), color: '#ff6a13' },
-      { label: 'Сборы', value: share(pools), color: '#2f9e6a' },
+      { label: 'Командные сборы', value: share(pools), color: '#2f9e6a' },
+      { label: 'Благотворительность', value: share(charity), color: '#0047bb' },
       { label: 'Другие товары', value: share(other), color: '#d9d9df' },
     ],
   };

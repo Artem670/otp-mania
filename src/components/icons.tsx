@@ -28,7 +28,7 @@ export const PRODUCT_ICONS: Record<string, IconType> = {
   shirt: LuShirt, snowflake: LuSnowflake, coffee: LuCoffee, backpack: LuBackpack, umbrella: LuUmbrella,
   shoppingbag: LuShoppingBag, headphones: LuHeadphones, battery: LuBattery, speaker: LuSpeaker, watch: LuWatch,
   gift: LuGift, dumbbell: LuDumbbell, book: LuBook, film: LuFilm, baby: LuBaby, sticker: LuSticker, notebook: LuNotebook,
-  paw: LuPawPrint, palm: LuTrees, utensils: LuUtensils, sparkles: LuSparkles, mountain: LuMountain,
+  paw: LuPawPrint, heart: LuHeart, palm: LuTrees, utensils: LuUtensils, sparkles: LuSparkles, mountain: LuMountain,
 };
 
 export const POOL_PRESETS: Record<string, { icon: IconType; bg: string; fg: string; label: string }> = {

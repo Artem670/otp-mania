@@ -88,7 +88,8 @@ export type ProductCategory =
   | 'electronics'
   | 'certificates'
   | 'merch'
-  | 'experiences';
+  | 'experiences'
+  | 'charity';
 
 export interface Product {
   id: string;
@@ -148,7 +149,12 @@ export interface Pool {
   contributions: PoolContribution[];
   status: PoolStatus;
   createdAt: number;
+  kind?: PoolKind; // по умолчанию командный
 }
+
+/** Командный сбор (выезд, квиз, кофемашина) или благотворительный (банк удваивает собранное). */
+export type PoolKind = 'team' | 'charity';
+export const POOL_KIND_LABELS: Record<PoolKind, string> = { team: 'Для команды', charity: 'Благотворительность' };
 
 export interface Notification {
   id: string;
@@ -292,6 +298,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   certificates: 'Сертификаты',
   merch: 'Мерч компании',
   experiences: 'Впечатления',
+  charity: 'Благотворительность',
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

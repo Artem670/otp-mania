@@ -48,7 +48,7 @@ export default function CartPage() {
           <Card className="pad-0">
             {lines.map((l) => (
               <div key={l.productId} className="row" style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 76, height: 76, borderRadius: 14, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt icon={l.product.icon} tone={l.product.tone} /></div>
+                <div style={{ width: 76, height: 76, borderRadius: 14, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt id={l.product.id} icon={l.product.icon} tone={l.product.tone} /></div>
                 <div className="grow">
                   <div className="xs muted">{CATEGORY_LABELS[l.product.category]}</div>
                   <b>{l.product.name}</b>

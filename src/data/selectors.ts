@@ -42,6 +42,18 @@ export const lastRecognition = (db: DB, userId: string) => {
 };
 
 export const poolRaised = (p: Pool) => sum(p.contributions.map((c) => c.amount));
+/** Сколько добавит банк: благотворительные сборы и пожертвования удваиваются. */
+export const poolMatch = (p: Pool) => (p.kind === 'charity' ? poolRaised(p) : 0);
+export const CHARITY_MATCH = 1; // банк добавляет 100% от суммы сотрудников
+export function charityTotals(db: DB) {
+  const fromPools = sum(db.pools.filter((p) => p.kind === 'charity' && p.status !== 'cancelled').map(poolRaised));
+  const charityIds = new Set(db.products.filter((p) => p.category === 'charity').map((p) => p.id));
+  const fromShop = sum(db.orders.filter((o) => o.status !== 'cancelled').flatMap((o) => o.items.filter((i) => charityIds.has(i.productId)).map((i) => i.price * i.qty)));
+  const coins = fromPools + fromShop;
+  const rub = coins * db.settings.coinCostRub * (1 + CHARITY_MATCH);
+  const donors = new Set([...db.pools.filter((p) => p.kind === 'charity').flatMap((p) => p.contributions.map((c) => c.userId)), ...db.orders.filter((o) => o.items.some((i) => charityIds.has(i.productId))).map((o) => o.userId)]).size;
+  return { coins, rub, donors };
+}
 export const poolParticipants = (p: Pool) => new Set(p.contributions.map((c) => c.userId)).size;
 export const poolVisibleTo = (p: Pool, u: User) => p.scope === 'all' || p.scope === u.deptId || p.organizerId === u.id;
 
@@ -346,7 +358,7 @@ export const PET_LEVELS = [
   { xp: 20000, title: 'Легенда', perk: 'Сертификаты' },
 ];
 export const petLevel = (xp: number) => PET_LEVELS.reduce((l, L, i) => (xp >= L.xp ? i + 1 : l), 1);
-export const CATEGORY_LEVEL: Record<ProductCategory, number> = { merch: 1, accessories: 2, clothes: 3, electronics: 4, experiences: 5, certificates: 6 };
+export const CATEGORY_LEVEL: Record<ProductCategory, number> = { charity: 1, merch: 1, accessories: 2, clothes: 3, electronics: 4, experiences: 5, certificates: 6 };
 export const productLevel = (p: Pick<Product, 'category' | 'minLevel'>) => p.minLevel ?? CATEGORY_LEVEL[p.category];
 export const isUnlocked = (p: Pick<Product, 'category' | 'minLevel'>, xp: number) => petLevel(xp) >= productLevel(p);
 

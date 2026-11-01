@@ -139,6 +139,17 @@ async function migrate(db: DB) {
     const next = db.products.filter((p) => limited.has(p.id)).map((p) => ({ ...p, limited: true }));
     await tryUpsert(next.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { next.forEach((p) => { const i = db.products.findIndex((x) => x.id === p.id); db.products[i] = p; }); });
   }
+  // Благотворительность и командные сборы (версия 8)
+  if (db.users.some((u) => u.email.endsWith('@mania.demo'))) {
+    const fresh = createSeed(now);
+    const newProducts = fresh.products.filter((p) => !db.products.some((x) => x.id === p.id) && p.category === 'charity');
+    await tryUpsert(newProducts.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { db.products.push(...newProducts); });
+    const byU = new Set(db.users.map((u) => u.id));
+    const newPools = fresh.pools.filter((p) => !db.pools.some((x) => x.id === p.id) && byU.has(p.organizerId)).map((p) => ({ ...p, contributions: [] })); // вклады в живой базе только настоящие
+    await tryUpsert(newPools.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { db.pools.push(...newPools); });
+    const oldCharity = db.pools.filter((p) => p.id === 'pool2' && !p.kind).map((p) => ({ ...p, kind: 'charity' as const }));
+    await tryUpsert(oldCharity.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { oldCharity.forEach((p) => { db.pools[db.pools.findIndex((x) => x.id === p.id)] = p; }); });
+  }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {
     const formal = ACCRUAL_CATEGORIES.filter((c) => c.formal);
     const settings = { ...db.settings, accrualCategories: [...db.settings.accrualCategories, ...formal] };

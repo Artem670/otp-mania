@@ -1,10 +1,11 @@
+import { ProductIllustration } from './productArt';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type ButtonHTMLAttributes } from 'react';
 import { cx, initials, fmt } from '../lib/utils';
 import { Alert, CircleCheck, Info, Loader, X, Coins as CoinsIcon } from './icons';
 import type { IconType } from 'react-icons';
 import { ApiError } from '../data/api';
 import type { User } from '../data/types';
-import { PRODUCT_ICONS, POOL_PRESETS } from './icons';
+import { POOL_PRESETS } from './icons';
 
 /* ---------- Тосты ---------- */
 type ToastKind = 'success' | 'error' | 'info';
@@ -236,15 +237,12 @@ export function Confirm({ open, title, text, confirmText, danger, loading, onCon
 }
 
 /* ---------- Иллюстрации ---------- */
-export function ProductArt({ icon, tone, size = 'md' }: { icon: string; tone: string; size?: 'md' | 'lg' }) {
-  const Icon = PRODUCT_ICONS[icon] ?? PRODUCT_ICONS.gift;
-  const dark = ['#16161a', '#1F1F24', '#3A3A42'].includes(tone);
-  const s = size === 'lg' ? 150 : 84;
+export function ProductArt({ id, icon, tone }: { id?: string; icon: string; tone: string; size?: 'md' | 'lg' }) {
+  const dark = ['#16161a', '#1f1f24', '#3a3a42'].includes(tone.toLowerCase());
+  const bg = id === 'p-toy' ? '#f5f4ef' : dark ? 'linear-gradient(150deg, #fafafa 0%, #ececf0 100%)' : `linear-gradient(150deg, #ffffff 0%, ${tone}14 55%, ${tone}30 100%)`;
   return (
-    <div style={{ position: 'absolute', inset: 0, background: dark ? `linear-gradient(150deg, #2a2a31, ${tone})` : `linear-gradient(150deg, #fff 0%, ${tone}22 55%, ${tone}55 100%)`, display: 'grid', placeItems: 'center' }} aria-hidden="true">
-      <div style={{ position: 'absolute', width: s * 1.9, height: s * 1.9, borderRadius: '50%', background: dark ? '#ffffff10' : '#ffffff99' }} />
-      <div style={{ position: 'absolute', width: s * 1.25, height: s * 1.25, borderRadius: '50%', background: dark ? '#C1FF05' : tone, opacity: dark ? 0.9 : 0.16 }} />
-      <Icon size={s} strokeWidth={1.4} color={dark ? '#16161a' : tone} style={{ position: 'relative', filter: 'drop-shadow(0 10px 18px rgba(0,0,0,.15))' }} />
+    <div style={{ position: 'absolute', inset: 0, background: bg, display: 'grid', placeItems: 'center' }} aria-hidden="true">
+      <ProductIllustration id={id} icon={icon} tone={tone} />
     </div>
   );
 }

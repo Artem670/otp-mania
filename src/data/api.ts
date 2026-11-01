@@ -51,7 +51,7 @@ async function enterLive() {
     const newUser: User & { authId: string } = {
       id, authId: session!.user.id, name: (meta.name || session!.user.email.split('@')[0]).trim(), email: session!.user.email.toLowerCase(), password: '',
       title: meta.title || 'Сотрудник', deptId, role: 'employee', coins: 0, rucoins: 0, color: ['#9E6FC3', '#1F1F24', '#6F3FA0', '#6E9E00', '#3A3A42'][Math.floor(Math.random() * 5)],
-      joinedAt: Date.now(), lastActiveAt: Date.now(), pet: { name: 'Пятак', xp: 0, fedAt: Date.now() },
+      joinedAt: Date.now(), lastActiveAt: Date.now(), pet: { name: 'ОТуПик', xp: 0, fedAt: Date.now() },
     };
     await commit((d) => {
       d.users.push(newUser);
@@ -299,7 +299,7 @@ export const api = {
       touch(d, x.id);
     });
   },
-  async createPool(input: { title: string; description: string; goal: string; target: number; deadline: number; scope: string; image: string }) {
+  async createPool(input: { title: string; description: string; goal: string; target: number; deadline: number; scope: string; image: string; kind?: 'team' | 'charity' }) {
     await wait();
     const db = getState();
     const u = requireUser(db);
@@ -313,7 +313,7 @@ export const api = {
     if (u.role === 'manager' && input.scope !== u.deptId && input.scope !== 'all') fail('Руководитель создаёт сборы для своего подразделения или для всех');
     const id = uid('pool');
     await commit((d) => {
-      d.pools.push({ id, title: input.title.trim(), description: input.description.trim(), goal: input.goal.trim(), target: input.target, deadline: input.deadline, scope: input.scope, organizerId: u.id, image: input.image, contributions: [], status: 'active', createdAt: Date.now() });
+      d.pools.push({ id, title: input.title.trim(), description: input.description.trim(), goal: input.goal.trim(), target: input.target, deadline: input.deadline, scope: input.scope, organizerId: u.id, image: input.image, contributions: [], status: 'active', createdAt: Date.now(), kind: input.kind ?? 'team' });
       d.users.filter((x) => x.id !== u.id && (input.scope === 'all' || x.deptId === input.scope)).forEach((x) => notify(d, x.id, `Новый сбор: «${input.title.trim()}»`, '/cabinet/pools'));
     });
     return id;

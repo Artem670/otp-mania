@@ -14,7 +14,7 @@ export function CreatePoolModal({ open, onClose }: { open: boolean; onClose: () 
   const toast = useToast();
   const { run, busy } = useAction();
   const toDate = (ts: number) => new Date(ts).toISOString().slice(0, 10);
-  const [f, setF] = useState({ title: '', description: '', goal: '', target: '', deadline: toDate(Date.now() + 21 * DAY), scope: u.role === 'admin' ? 'all' : u.deptId, image: 'coffee' });
+  const [f, setF] = useState({ title: '', description: '', goal: '', target: '', deadline: toDate(Date.now() + 21 * DAY), scope: u.role === 'admin' ? 'all' : u.deptId, image: 'coffee', kind: 'team' as 'team' | 'charity' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = (k: keyof typeof f, v: string) => { setF((x) => ({ ...x, [k]: v })); setErrors((e) => ({ ...e, [k]: '' })); };
   const scopes = u.role === 'admin' ? [{ id: 'all', name: 'Весь банк' }, ...db.departments] : [{ id: u.deptId, name: deptName(db, u.deptId) }, { id: 'all', name: 'Весь банк' }];
@@ -48,6 +48,12 @@ export function CreatePoolModal({ open, onClose }: { open: boolean; onClose: () 
       footer={<><Button variant="secondary" onClick={onClose}>Отмена</Button><Button loading={busy === 'create'} onClick={submit} data-testid="pool-create-submit">Создать сбор</Button></>}>
       <div className="grid g2" style={{ gap: 16 }}>
         <div className="col" style={{ gap: 14 }}>
+          <Field label="Тип сбора" hint={f.kind === 'charity' ? 'Банк удвоит всё, что соберут сотрудники' : 'Выезд, квиз, кофемашина, подарок: всё, что сплачивает команду'}>
+            <div className="seg" role="radiogroup" aria-label="Тип сбора">
+              <button type="button" className={f.kind === 'team' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, kind: 'team' }))}>Для команды</button>
+              <button type="button" className={f.kind === 'charity' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, kind: 'charity', image: 'heart' }))}>Благотворительность</button>
+            </div>
+          </Field>
           <Field label="Название" error={errors.title} htmlFor="pl-title"><input id="pl-title" className={cx('input', errors.title && 'err')} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="Например, кофемашина на этаж" /></Field>
           <Field label="Описание" error={errors.description} htmlFor="pl-desc"><textarea id="pl-desc" className={cx('textarea', errors.description && 'err')} value={f.description} onChange={(e) => set('description', e.target.value)} placeholder="Зачем этот сбор и кому он поможет" /></Field>
           <Field label="Цель сбора" error={errors.goal} htmlFor="pl-goal"><input id="pl-goal" className={cx('input', errors.goal && 'err')} value={f.goal} onChange={(e) => set('goal', e.target.value)} placeholder="Что именно купим или организуем" /></Field>

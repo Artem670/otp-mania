@@ -12,12 +12,12 @@ export const isLocked = (p: Product, xp: number) => !isUnlocked(p, xp);
 
 type Sort = 'popular' | 'cheap' | 'expensive';
 
-export default function Shop({ productId }: { productId?: string }) {
+export default function Shop({ productId, initialCat }: { productId?: string; initialCat?: string }) {
   const db = useDB();
   const u = selectMe(db)!;
   const { navigate } = useRouter();
   const loading = usePageLoading('shop');
-  const [cat, setCat] = useState<ProductCategory | 'all'>('all');
+  const [cat, setCat] = useState<ProductCategory | 'all'>(initialCat && initialCat in CATEGORY_LABELS ? (initialCat as ProductCategory) : 'all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('popular');
   const { run, busy } = useAction();
@@ -73,7 +73,7 @@ export default function Shop({ productId }: { productId?: string }) {
             return (
               <article key={p.id} className="product" data-testid={`product-${p.id}`}>
                 <button className="product-img" onClick={() => navigate(`/cabinet/shop/${p.id}`)} aria-label={`Открыть «${p.name}»`}>
-                  <ProductArt icon={p.icon} tone={p.tone} />
+                  <ProductArt id={p.id} icon={p.icon} tone={p.tone} />
                   <span className="tag">{p.stock <= 10 ? <Badge tone="orange">Осталось {p.stock}</Badge> : hits.has(p.id) ? <Badge tone="dark">Хит</Badge> : null}</span>
                 </button>
                 <div className="product-body">
@@ -115,7 +115,7 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
   return (
     <Modal open onClose={onClose} title={p.name} size="lg">
       <div className="grid g2" style={{ gap: 22 }}>
-        <div className="product-img" style={{ borderRadius: 18, cursor: 'default', aspectRatio: '1' }}><ProductArt icon={p.icon} tone={p.tone} size="lg" /></div>
+        <div className="product-img" style={{ borderRadius: 18, cursor: 'default', aspectRatio: '1' }}><ProductArt id={p.id} icon={p.icon} tone={p.tone} size="lg" /></div>
         <div className="col" style={{ gap: 14 }}>
           <div className="row-sm row-wrap"><Badge>{CATEGORY_LABELS[p.category]}</Badge>{sold > 0 && <Badge tone="orange">Купили {sold} раз</Badge>}</div>
           <p className="text-2">{p.description}</p>
