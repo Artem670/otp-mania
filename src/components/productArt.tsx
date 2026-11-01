@@ -1,5 +1,41 @@
 import type { ReactNode } from 'react';
-import puffin from '../assets/pet/main.jpg';
+import face from '../assets/pet/curious.jpg';
+import faceJoy from '../assets/pet/joy.jpg';
+import faceWink from '../assets/shop/wink.jpg';
+import bandana from '../assets/shop/bandana.jpg';
+import side from '../assets/shop/side.jpg';
+import notebookPhoto from '../assets/shop/notebook.jpg';
+import powerbankPhoto from '../assets/shop/powerbank.jpg';
+import toyCut from '../assets/shop/toy.png';
+import bandCut from '../assets/shop/band.png';
+import earbudsCut from '../assets/shop/earbuds.png';
+import certOzon from '../assets/shop/cert-ozon.png';
+import certWb from '../assets/shop/cert-wb.png';
+import certGa from '../assets/shop/cert-ga.png';
+import certLitres from '../assets/shop/cert-litres.png';
+import certDdx from '../assets/shop/cert-ddx.jpg';
+import fundMayak from '../assets/shop/fund-mayak.jpg';
+import fundBereginya from '../assets/shop/fund-bereginya.jpg';
+
+/**
+ * Фото товаров. cover: снимок на всю карточку; cut: вырезанный предмет без фона; card: карта с тенью.
+ * Картинки сертификатов предоставлены партнёрами.
+ */
+type Photo = { src: string; kind: 'cover' | 'cut' | 'card' | 'logo'; cert?: boolean };
+const PHOTOS: Record<string, Photo> = {
+  'p-notebook': { src: notebookPhoto, kind: 'cover' },
+  'p-powerbank': { src: powerbankPhoto, kind: 'cover' },
+  'p-toy': { src: toyCut, kind: 'cut' },
+  'p-watch': { src: bandCut, kind: 'cut' },
+  'p-headphones': { src: earbudsCut, kind: 'cut' },
+  'p-cert-ozon': { src: certOzon, kind: 'cut', cert: true },
+  'p-cert-wb': { src: certWb, kind: 'cut', cert: true },
+  'p-cert-ga': { src: certGa, kind: 'cut', cert: true },
+  'p-cert-books': { src: certLitres, kind: 'cut', cert: true },
+  'p-cert-sport': { src: certDdx, kind: 'card', cert: true },
+  'p-don-mayak': { src: fundMayak, kind: 'logo' },
+  'p-don-bereginya': { src: fundBereginya, kind: 'logo' },
+};
 
 /**
  * Иллюстрации товаров магазина (вектор, без внешних картинок).
@@ -34,6 +70,19 @@ function GiftCard({ tone, label, amount, emblem }: { tone: string; label: string
   );
 }
 
+/** Принт с ОТуПиком: фото маскота в круге с обводкой, как вышивка или шеврон. */
+let printSeq = 0;
+function Print({ x, y, r, src = face, ring = '#fff' }: { x: number; y: number; r: number; src?: string; ring?: string }) {
+  const id = `pp${++printSeq}`;
+  return (
+    <g>
+      <clipPath id={id}><circle cx={x} cy={y} r={r} /></clipPath>
+      <circle cx={x} cy={y + 1.5} r={r + 2.5} fill="#000" opacity=".18" />
+      <circle cx={x} cy={y} r={r + 2.2} fill={ring} />
+      <image href={src} x={x - r * 1.25} y={y - r * 1.15} width={r * 2.5} height={r * 2.5} preserveAspectRatio="xMidYMin slice" clipPath={`url(#${id})`} />
+    </g>
+  );
+}
 const rubles = (n = 1000) => `${n.toLocaleString('ru-RU')} ₽`;
 const bagEmblem = <g><path d="M0 4 H22 L20 24 H2 Z" fill="#fff" opacity=".9" /><path d="M6 6 Q6 -4 11 -4 Q16 -4 16 6" stroke="#fff" strokeWidth="2.5" fill="none" /></g>;
 const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
@@ -45,7 +94,7 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <path d="M94 80 L92 108 M106 80 L108 108" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity=".85" />
       <circle cx="92" cy="110" r="2.6" fill="#fff" /><circle cx="108" cy="110" r="2.6" fill="#fff" />
       <path d="M70 130 H130 L126 156 H74 Z" fill="#000" opacity=".12" />
-      <Mark x={100} y={118} r={7} />
+      <Print x={100} y={122} r={17} ring={LIME} />
       <Shade d="M150 104 L150 160 Q150 168 142 168 H128 Q140 140 140 104 Z" />
       <Shine d="M44 64 L70 52 Q62 80 60 120 L48 104 L42 148 L30 148 Z" o={0.12} />
     </g>
@@ -56,8 +105,8 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <path d="M78 46 Q100 64 122 46 Q100 54 78 46 Z" fill="#000" opacity=".35" />
       <Shine d="M34 64 L72 46 Q70 70 68 168 H68 Q62 168 62 162 L62 90 L48 96 Z" o={0.1} />
       <Shade d="M138 90 V162 Q138 168 132 168 H118 Q126 130 126 90 Z" />
-      <Mark x={100} y={100} r={11} />
-      <text x="100" y="132" textAnchor="middle" fontSize="11" fontWeight="700" fill={LIME}>МАНИЯ</text>
+      <Print x={100} y={104} r={22} ring={LIME} />
+      <text x="100" y="146" textAnchor="middle" fontSize="11" fontWeight="700" fill={LIME}>МАНИЯ</text>
     </g>
   ),
   'p-jacket': (t) => (
@@ -95,7 +144,7 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <rect x="68" y="52" width="64" height="8" fill="#000" opacity=".2" />
       <Shine d="M76 62 H86 L84 164 H78 Z" o={0.3} />
       <Shade d="M118 60 H130 L126 166 Q126 170 122 170 H116 Z" />
-      <Mark x={100} y={112} r={11} c={INK} />
+      <Print x={100} y={112} r={20} ring={LIME} />
       <path d="M140 74 q10 -8 2 -18 M146 82 q12 -10 4 -22" stroke="#bbb" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity=".7" />
     </g>
   ),
@@ -109,7 +158,7 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <rect x="64" y="104" width="72" height="12" rx="6" fill="#000" opacity=".15" />
       <rect x="94" y="100" width="12" height="8" rx="3" fill={LIME} />
       <path d="M66 66 H134" stroke="#000" strokeOpacity=".2" strokeWidth="3" strokeLinecap="round" />
-      <Mark x={100} y={84} r={8} />
+      <Print x={100} y={82} r={13} ring={LIME} />
     </g>
   ),
   'p-umbrella': (t) => (
@@ -131,7 +180,7 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <path d="M76 70 Q76 40 100 40 Q124 40 124 70" stroke="#d9d0b8" strokeWidth="6" fill="none" />
       <Shade d="M130 64 H142 L150 168 H134 Z" o={0.08} />
       <circle cx="100" cy="116" r="26" fill={t} />
-      <Mark x={100} y={116} r={11} c="#fff" />
+      <Print x={100} y={118} r={22} />
       <text x="100" y="158" textAnchor="middle" fontSize="10" fontWeight="700" fill={INK} opacity=".7">ОТП МАНИЯ</text>
     </g>
   ),
@@ -168,14 +217,24 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
   ),
   'p-speaker': (t) => (
     <g>
-      <rect x="54" y="56" width="92" height="116" rx="44" fill={t} />
-      <ellipse cx="100" cy="62" rx="40" ry="12" fill="#000" opacity=".35" />
-      <ellipse cx="100" cy="60" rx="34" ry="8" fill={INK} />
-      {[[-1, 0], [0, 0], [1, 0]].map(([d], i) => <circle key={i} cx={86 + i * 14} cy="60" r="2.4" fill={i === 1 ? LIME : '#555'} />)}
-      {Array.from({ length: 48 }).map((_, i) => <circle key={i} cx={68 + (i % 8) * 9 + (Math.floor(i / 8) % 2) * 4.5} cy={84 + Math.floor(i / 8) * 13} r="2" fill="#000" opacity=".25" />)}
-      <Shine d="M60 92 Q58 130 66 160 L62 158 Q52 128 56 90 Z" o={0.25} />
-      <Shade d="M128 66 Q146 80 146 110 V130 Q146 166 112 172 Q140 130 128 66 Z" />
-      <rect x="84" y="164" width="32" height="8" rx="4" fill={INK} />
+      <clipPath id="spkmesh"><rect x="38" y="78" width="124" height="66" rx="33" /></clipPath>
+      <rect x="38" y="78" width="124" height="66" rx="33" fill={INK} opacity=".18" transform="translate(4 10)" />
+      <rect x="38" y="78" width="124" height="66" rx="33" fill={t} />
+      <g clipPath="url(#spkmesh)" opacity=".28">
+        {Array.from({ length: 34 }).map((_, i) => <path key={i} d={`M${30 + i * 5} 76 l14 72`} stroke="#000" strokeWidth="1.2" />)}
+        {Array.from({ length: 34 }).map((_, i) => <path key={'b' + i} d={`M${44 + i * 5} 76 l-14 72`} stroke="#fff" strokeWidth=".8" opacity=".5" />)}
+      </g>
+      <ellipse cx="44" cy="111" rx="12" ry="31" fill={INK} />
+      <ellipse cx="44" cy="111" rx="7" ry="20" fill="#3a3a42" />
+      <ellipse cx="42" cy="104" rx="2.5" ry="7" fill="#fff" opacity=".18" />
+      <ellipse cx="156" cy="111" rx="12" ry="31" fill={INK} />
+      <ellipse cx="156" cy="111" rx="7" ry="20" fill="#3a3a42" />
+      <path d="M74 80 H126" stroke={INK} strokeWidth="5" strokeLinecap="round" opacity=".55" />
+      {[86, 100, 114].map((x, i) => <circle key={x} cx={x} cy="80" r="2" fill={i === 1 ? LIME : '#bbb'} />)}
+      <Shine d="M60 84 Q100 76 140 84 L140 92 Q100 84 60 92 Z" o={0.25} />
+      <Shade d="M60 132 Q100 146 140 132 L140 142 Q100 150 60 142 Z" o={0.2} />
+      <path d="M162 98 q16 2 16 14 q0 12 -16 14" stroke={INK} strokeWidth="5" fill="none" strokeLinecap="round" />
+      <path d="M182 92 q8 18 0 38 M190 86 q12 26 0 52" stroke={LIME} strokeWidth="3" fill="none" strokeLinecap="round" opacity=".8" />
     </g>
   ),
   'p-watch': (t) => (
@@ -202,10 +261,10 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
     <g>
       <rect x="44" y="40" width="116" height="132" rx="12" fill={INK} opacity=".12" transform="translate(5 6)" />
       <rect x="44" y="40" width="116" height="132" rx="12" fill="#fff" />
-      <circle cx="78" cy="76" r="22" fill={LIME} /><Mark x={78} y={76} r={10} c={INK} />
+      <Print x={78} y={76} r={20} src={faceJoy} ring={LIME} /><Print x={128} y={128} r={17} src={faceWink} />
       <path d="M128 56 l6 13 l14 2 l-10 10 l2 14 l-12 -7 l-12 7 l2 -14 l-10 -10 l14 -2 z" fill={t} />
       <path d="M62 122 q-2 -12 10 -12 q8 0 8 8 q0 -8 8 -8 q12 0 10 12 q-4 14 -18 22 q-14 -8 -18 -22 z" fill="#9e6fc3" />
-      <rect x="110" y="110" width="38" height="38" rx="10" fill={INK} /><text x="129" y="135" textAnchor="middle" fontSize="16" fontWeight="800" fill={LIME}>OK</text>
+      
       <path d="M148 172 Q160 172 160 160 L160 150 Q150 152 148 162 Z" fill="#e8e8ec" />
     </g>
   ),
@@ -216,21 +275,25 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <rect x="56" y="36" width="14" height="136" rx="6" fill="#000" opacity=".3" />
       <rect x="132" y="36" width="7" height="136" fill={LIME} />
       <path d="M118 172 v18 l6 -5 l6 5 v-18 z" fill="#9e6fc3" />
-      <Mark x={104} y={94} r={14} />
+      <Print x={104} y={94} r={22} ring={LIME} />
       <text x="104" y="132" textAnchor="middle" fontSize="10" fontWeight="600" fill="#fff" opacity=".8">A5 · в точку</text>
       <Shine d="M74 40 H82 V168 H74 Z" o={0.08} />
     </g>
   ),
   'p-pet': (t) => (
     <g>
-      <path d="M40 100 L160 100 L104 164 Z" fill="#2f9e6a" />
-      <path d="M40 100 L160 100 L104 164 Z" fill="#000" opacity=".08" />
-      <path d="M40 100 Q30 92 36 86 M160 100 Q172 92 166 86" stroke="#2f9e6a" strokeWidth="8" strokeLinecap="round" />
-      <Mark x={104} y={124} r={10} c="#fff" />
-      <ellipse cx="100" cy="76" rx="54" ry="16" fill={t} />
-      <path d="M46 76 Q50 100 62 104 H138 Q150 100 154 76" fill={t} />
-      <ellipse cx="100" cy="74" rx="44" ry="10" fill="#000" opacity=".3" />
-      <path d="M78 72 q4 -8 10 -2 M102 70 q6 -8 12 0 M88 76 q6 -4 10 2" stroke="#c98a4b" strokeWidth="6" strokeLinecap="round" />
+      <clipPath id="petcard"><rect x="30" y="26" width="112" height="100" rx="16" /></clipPath>
+      <rect x="30" y="26" width="112" height="100" rx="16" fill={INK} opacity=".16" transform="translate(5 6) rotate(-6 86 76)" />
+      <g transform="rotate(-6 86 76)">
+        <image href={bandana} x="30" y="26" width="112" height="100" preserveAspectRatio="xMidYMid slice" clipPath="url(#petcard)" />
+        <rect x="30" y="26" width="112" height="100" rx="16" fill="none" stroke="#fff" strokeWidth="3" />
+      </g>
+      <ellipse cx="122" cy="146" rx="50" ry="13" fill={t} />
+      <path d="M72 146 Q76 172 90 176 H154 Q168 172 172 146" fill={t} />
+      <path d="M150 150 Q166 152 170 146 Q166 170 154 176 H140 Q152 164 150 150 Z" fill="#000" opacity=".14" />
+      <ellipse cx="122" cy="144" rx="40" ry="8.5" fill="#000" opacity=".3" />
+      <path d="M102 141 q4 -7 9 -2 M124 139 q6 -7 11 0 M112 145 q6 -4 9 2" stroke="#c98a4b" strokeWidth="5" strokeLinecap="round" />
+      <Print x={150} y={44} r={20} src={side} ring={LIME} />
     </g>
   ),
   'p-dayoff': (t) => (
@@ -258,28 +321,20 @@ const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
       <rect x="84" y="40" width="32" height="12" rx="6" fill={LIME} />
     </g>
   ),
-  'p-masterclass': (t) => (
+  'p-psy': (t) => (
     <g>
-      <ellipse cx="100" cy="168" rx="56" ry="8" fill="#000" opacity=".12" />
-      <path d="M74 60 H126 Q120 74 124 88 Q150 110 140 146 Q134 166 100 166 Q66 166 60 146 Q50 110 76 88 Q80 74 74 60 Z" fill="#d98a5b" />
-      <path d="M74 60 H126 Q120 74 124 88 Q150 110 140 146 Q134 166 100 166 Q66 166 60 146 Q50 110 76 88 Q80 74 74 60 Z" fill={t} opacity=".35" />
-      <ellipse cx="100" cy="60" rx="26" ry="6" fill="#a7603b" />
-      <path d="M62 118 Q100 128 138 118" stroke="#fff" strokeOpacity=".6" strokeWidth="5" fill="none" />
-      <path d="M66 134 Q100 144 134 134" stroke={INK} strokeOpacity=".3" strokeWidth="3" fill="none" />
-      <Shine d="M74 98 Q64 120 70 148 L66 146 Q58 120 70 96 Z" o={0.35} />
-      <path d="M150 52 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z" fill={LIME} />
-      <path d="M44 70 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 z" fill="#9e6fc3" />
-    </g>
-  ),
-  'p-ski': (t) => (
-    <g>
-      <circle cx="148" cy="54" r="16" fill={LIME} />
-      <path d="M14 168 L74 70 L100 108 L124 80 L188 168 Z" fill={t} />
-      <path d="M74 70 L60 94 L70 90 L78 98 L86 88 L94 98 Z" fill="#fff" />
-      <path d="M124 80 L112 96 L120 94 L128 102 L134 94 Z" fill="#fff" />
-      <path d="M100 108 L124 80 L188 168 H150 Z" fill="#000" opacity=".2" />
-      <path d="M40 176 L160 140 M50 186 L170 150" stroke={INK} strokeWidth="5" strokeLinecap="round" />
-      <path d="M160 140 q10 -4 12 -12 M170 150 q10 -4 12 -12" stroke={INK} strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path d="M100 172 C40 132 22 98 34 70 C44 46 76 40 100 66 C124 40 156 46 166 70 C178 98 160 132 100 172 Z" fill={INK} opacity=".14" transform="translate(5 7)" />
+      <path d="M100 172 C40 132 22 98 34 70 C44 46 76 40 100 66 C124 40 156 46 166 70 C178 98 160 132 100 172 Z" fill="#fff" stroke={t} strokeWidth="8" strokeLinejoin="round" />
+      <g transform="translate(100 104)">
+        <path d="M-3 -34 C-14 -42 -32 -38 -36 -26 C-48 -24 -52 -8 -44 0 C-52 8 -46 24 -34 26 C-30 38 -14 40 -3 32 Z" fill={INK} />
+        <path d="M3 -34 C14 -42 32 -38 36 -26 C48 -24 52 -8 44 0 C52 8 46 24 34 26 C30 38 14 40 3 32 Z" fill={INK} />
+        <g stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round">
+          <path d="M-12 -28 q-8 6 -4 14 q-10 2 -10 12" /><path d="M-30 -14 q8 2 10 10" /><path d="M-34 10 q10 -4 16 4 q4 -8 12 -6" /><path d="M-20 24 q2 -8 10 -10" />
+          <path d="M12 -28 q8 6 4 14 q10 2 10 12" /><path d="M30 -14 q-8 2 -10 10" /><path d="M34 10 q-10 -4 -16 4 q-4 -8 -12 -6" /><path d="M20 24 q-2 -8 -10 -10" />
+        </g>
+      </g>
+      <path d="M156 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z" fill={LIME} />
+      <circle cx="44" cy="150" r="5" fill={t} opacity=".6" />
     </g>
   ),
   'p-late': (t) => (
@@ -358,12 +413,18 @@ const BY_ICON: Record<string, string> = {
   shirt: 'p-tee', snowflake: 'p-beanie', coffee: 'p-mug', backpack: 'p-backpack', umbrella: 'p-umbrella', shoppingbag: 'p-shopper',
   headphones: 'p-headphones', battery: 'p-powerbank', speaker: 'p-speaker', watch: 'p-watch', gift: 'p-cert-ozon', dumbbell: 'p-cert-sport',
   book: 'p-cert-books', film: 'p-cert-cinema', sticker: 'p-stickers', notebook: 'p-notebook', paw: 'p-pet', heart: 'p-don-bereginya',
-  palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-masterclass', mountain: 'p-ski',
+  palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-psy', brain: 'p-psy', mountain: 'p-psy',
 };
 
 export function ProductIllustration({ id, icon, tone, nominal }: { id?: string; icon: string; tone: string; nominal?: number }) {
-  if (id === 'p-toy' || (!id && icon === 'baby')) {
-    return <img src={puffin} alt="" style={{ width: '86%', height: '86%', objectFit: 'contain', position: 'relative', mixBlendMode: 'multiply' }} />;
+  const photo = id ? PHOTOS[id] : undefined;
+  if (photo) {
+    return (
+      <div className={`product-photo is-${photo.kind}`}>
+        <img src={photo.src} alt="" loading="lazy" />
+        {photo.cert && <span className="product-photo-nominal">{rubles(nominal ?? 1000)}</span>}
+      </div>
+    );
   }
   const key = id && ART[id] ? id : BY_ICON[icon] ?? 'p-cert-ozon';
   return (

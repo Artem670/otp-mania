@@ -275,6 +275,21 @@ export interface CartLine {
   nominal?: number; // выбранный номинал сертификата, ₽
 }
 
+/** Обращение в техподдержку: переписка сотрудника с администраторами. */
+export interface SupportMessage { id: string; ts: number; authorId: string; text: string; staff: boolean }
+export interface Ticket {
+  id: string;
+  userId: string;
+  topic: string;
+  status: 'open' | 'closed';
+  createdAt: number;
+  updatedAt: number;
+  messages: SupportMessage[];
+  /** Время, до которого сотрудник и поддержка прочитали переписку. */
+  userReadAt: number;
+  staffReadAt: number;
+}
+
 export interface DB {
   version: number;
   seededAt: number;
@@ -293,6 +308,7 @@ export interface DB {
   goals: Goal[];
   articles: Article[];
   pulses: Pulse[];
+  tickets: Ticket[];
   settings: Settings;
   signalStatus: Record<string, SignalStatus>;
   carts: Record<string, CartLine[]>;
@@ -305,7 +321,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   electronics: 'Электроника',
   certificates: 'Сертификаты',
   merch: 'Мерч компании',
-  experiences: 'Впечатления',
+  experiences: 'Забота о себе',
   charity: 'Благотворительность',
   perks: 'За РуКоины',
 };

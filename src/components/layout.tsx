@@ -8,6 +8,7 @@ import { useRouter } from '../lib/router';
 import { ago, cx, fmt } from '../lib/utils';
 import { Avatar, Coin, ThemeToggle, useAction } from './ui';
 import { OtpLogo, TeamCredit } from './brand';
+import { SupportWidget } from './SupportWidget';
 import { toggleTheme, useTheme } from '../lib/theme';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
@@ -238,6 +239,7 @@ export function AppLayout({ me, children }: { me: User; children: ReactNode }) {
         {menu && <div className="drawer-overlay" style={{ zIndex: 70 }} onClick={() => setMenu(false)} />}
         <main className="main" id="main">{children}</main>
       </div>
+      <SupportWidget me={me} />
     </div>
   );
 }

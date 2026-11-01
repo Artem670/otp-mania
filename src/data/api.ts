@@ -345,6 +345,70 @@ export const api = {
       touch(d, u.id);
     });
   },
+  /* ---------- Техподдержка ---------- */
+  /** Сообщение в поддержку от сотрудника: продолжает открытое обращение или создаёт новое. */
+  async supportSend(text: string, topic = 'Другое') {
+    await wait(200);
+    const body = text.trim();
+    if (body.length < 2) fail('Напишите сообщение');
+    if (body.length > 1000) fail('Сообщение длиннее 1 000 символов. Сократите его или отправьте частями');
+    let ticketId = '';
+    await commit((d) => {
+      const u = requireUser(d);
+      const now = Date.now();
+      let t = d.tickets.find((x) => x.userId === u.id && x.status === 'open');
+      if (!t) {
+        t = { id: uid('tk'), userId: u.id, topic, status: 'open', createdAt: now, updatedAt: now, messages: [], userReadAt: now, staffReadAt: 0 };
+        d.tickets.push(t);
+        d.users.filter((x) => x.role === 'admin' && x.id !== u.id).forEach((a) => notify(d, a.id, `Новое обращение в поддержку от ${u.name}: «${topic}»`));
+      }
+      t.messages.push({ id: uid('sm'), ts: now, authorId: u.id, text: body, staff: false });
+      t.updatedAt = now; t.userReadAt = now;
+      ticketId = t.id;
+      touch(d, u.id);
+    });
+    return ticketId;
+  },
+  /** Ответ администратора в обращение. */
+  async supportReply(ticketId: string, text: string) {
+    await wait(200);
+    const body = text.trim();
+    if (body.length < 2) fail('Напишите ответ');
+    if (body.length > 1000) fail('Ответ длиннее 1 000 символов');
+    await commit((d) => {
+      const u = requireUser(d);
+      if (u.role !== 'admin') fail('Отвечать на обращения могут только администраторы');
+      const t = d.tickets.find((x) => x.id === ticketId);
+      if (!t) fail('Обращение не найдено');
+      const now = Date.now();
+      t!.messages.push({ id: uid('sm'), ts: now, authorId: u.id, text: body, staff: true });
+      t!.status = 'open'; t!.updatedAt = now; t!.staffReadAt = now;
+      notify(d, t!.userId, 'Поддержка ответила на ваше обращение. Откройте чат в правом нижнем углу');
+    });
+  },
+  async supportClose(ticketId: string) {
+    await wait(150);
+    await commit((d) => {
+      const u = requireUser(d);
+      const t = d.tickets.find((x) => x.id === ticketId);
+      if (!t) fail('Обращение не найдено');
+      if (u.role !== 'admin' && t!.userId !== u.id) fail('Нет доступа к обращению');
+      t!.status = 'closed'; t!.updatedAt = Date.now();
+      if (u.role === 'admin') { t!.staffReadAt = Date.now(); if (t!.userId !== u.id) notify(d, t!.userId, `Обращение «${t!.topic}» закрыто. Если вопрос остался, напишите в поддержку снова`); }
+    });
+  },
+  /** Отмечает переписку прочитанной (сотрудником или поддержкой). */
+  async supportRead(ticketId: string, asStaff: boolean) {
+    const db = getState();
+    const t = db.tickets.find((x) => x.id === ticketId);
+    const last = t?.messages[t.messages.length - 1]?.ts ?? 0;
+    if (!t || (asStaff ? t.staffReadAt : t.userReadAt) >= last) return;
+    await commit((d) => {
+      const x = d.tickets.find((y) => y.id === ticketId);
+      if (!x) return;
+      if (asStaff) x.staffReadAt = Date.now(); else x.userReadAt = Date.now();
+    });
+  },
   async rateOrder(orderId: string, csi: number) {
     await wait(200);
     if (!(csi >= 1 && csi <= 5)) fail('Оценка от 1 до 5');

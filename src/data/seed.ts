@@ -1,12 +1,11 @@
 import type {
-  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Pulse, Settings, Thanks, Tx, User,
-} from './types';
+  Accrual, Article, Category, Conversion, DB, Department, EventItem, Goal, NewsItem, Order, Pool, Product, Pulse, Settings, Thanks, Tx, User, Ticket } from './types';
 import { ARTICLES } from './articles';
 import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, lineTitle, pickPrize, unitCost, unitPrice } from './selectors';
 
 // Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
-export const DB_VERSION = 12;
+export const DB_VERSION = 13;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -117,28 +116,28 @@ const THANKS_MESSAGES = [
 ];
 
 export const PRODUCTS: Product[] = [
-  { id: 'p-hoodie', limited: true, name: 'Худи «Мания»', category: 'clothes', price: 9000, costRub: 1500, stock: 40, active: true, description: 'Плотный хлопок, свободный крой, вышивка на груди. Размеры XS–XXL.', icon: 'shirt', tone: '#9E6FC3' },
-  { id: 'p-tee', name: 'Футболка базовая', category: 'clothes', price: 3500, costRub: 600, stock: 120, active: true, description: 'Хлопок 100%, минималистичный принт на спине.', icon: 'shirt', tone: '#1F1F24' },
-  { id: 'p-jacket', name: 'Флисовая куртка', category: 'clothes', price: 14000, costRub: 2600, stock: 25, active: true, description: 'Тёплая куртка на молнии для офиса и прогулок.', icon: 'snowflake', tone: '#6E6E78' },
-  { id: 'p-beanie', limited: true, name: 'Шапка-бини', category: 'clothes', price: 2500, costRub: 400, stock: 60, active: true, description: 'Мягкая вязка, нашивка с логотипом программы.', icon: 'snowflake', tone: '#FF6A13' },
-  { id: 'p-mug', name: 'Термокружка 400 мл', category: 'accessories', price: 2800, costRub: 450, stock: 90, active: true, description: 'Держит тепло до 6 часов, подходит для кофемашины.', icon: 'coffee', tone: '#6E9E00' },
-  { id: 'p-backpack', name: 'Рюкзак для ноутбука', category: 'accessories', price: 8500, costRub: 1600, stock: 35, active: true, description: 'Отделение под ноутбук 16", карман для зарядки, влагозащита.', icon: 'backpack', tone: '#1F1F24' },
-  { id: 'p-umbrella', name: 'Зонт-автомат', category: 'accessories', price: 3200, costRub: 550, stock: 50, active: true, description: 'Купол 105 см, система антиветер.', icon: 'umbrella', tone: '#8E8E99' },
-  { id: 'p-shopper', name: 'Шоппер', category: 'accessories', price: 1500, costRub: 250, stock: 150, active: true, description: 'Плотный хлопок, внутренний карман.', icon: 'shoppingbag', tone: '#9E6FC3' },
-  { id: 'p-headphones', name: 'Беспроводные наушники', category: 'electronics', price: 24000, costRub: 4200, stock: 12, active: true, description: 'Шумоподавление, до 30 часов работы.', icon: 'headphones', tone: '#3A3A42' },
-  { id: 'p-powerbank', name: 'Пауэрбанк 10 000 мА·ч', category: 'electronics', price: 6000, costRub: 1100, stock: 45, active: true, description: 'Быстрая зарядка, два порта USB-C.', icon: 'battery', tone: '#FF6A13' },
-  { id: 'p-speaker', name: 'Портативная колонка', category: 'electronics', price: 12000, costRub: 2300, stock: 18, active: true, description: 'Защита от воды IP67, 12 часов музыки.', icon: 'speaker', tone: '#6E6E78' },
-  { id: 'p-watch', name: 'Фитнес-браслет', category: 'electronics', price: 15000, costRub: 2700, stock: 20, active: true, description: 'Пульс, сон, шаги и уведомления.', icon: 'watch', tone: '#1F1F24' },
+  { id: 'p-hoodie', limited: true, name: 'Худи «Мания»', category: 'clothes', price: 20000, costRub: 1600, stock: 40, active: true, description: 'Хлопок с начёсом 320 г/м², свободный крой, вышивка ОТуПика на груди. Лимитированный тираж, размеры XS–XXL.', icon: 'shirt', tone: '#9E6FC3' },
+  { id: 'p-tee', name: 'Футболка базовая', category: 'clothes', price: 6500, costRub: 500, stock: 120, active: true, description: 'Хлопок 100%, 180 г/м², принт с ОТуПиком на груди.', icon: 'shirt', tone: '#1F1F24' },
+  { id: 'p-jacket', name: 'Флисовая куртка', category: 'clothes', price: 22500, costRub: 1900, stock: 25, active: true, description: 'Тёплый флис 280 г/м² на молнии, вышитый знак на груди. Для офиса и прогулок.', icon: 'snowflake', tone: '#6E6E78' },
+  { id: 'p-beanie', limited: true, name: 'Шапка-бини', category: 'clothes', price: 5000, costRub: 380, stock: 60, active: true, description: 'Мягкая вязка, нашивка с логотипом программы.', icon: 'snowflake', tone: '#FF6A13' },
+  { id: 'p-mug', name: 'Термокружка 400 мл', category: 'accessories', price: 8000, costRub: 600, stock: 90, active: true, description: 'Сталь с двойными стенками, держит тепло до 6 часов, подходит для кофемашины. Принт с ОТуПиком.', icon: 'coffee', tone: '#6E9E00' },
+  { id: 'p-backpack', name: 'Рюкзак для ноутбука', category: 'accessories', price: 22500, costRub: 2000, stock: 35, active: true, description: 'Отделение под ноутбук 16", карман для зарядки, влагозащитная ткань, шеврон с ОТуПиком.', icon: 'backpack', tone: '#1F1F24' },
+  { id: 'p-umbrella', name: 'Зонт-автомат', category: 'accessories', price: 9500, costRub: 750, stock: 50, active: true, description: 'Автомат, купол 105 см, система антиветер.', icon: 'umbrella', tone: '#8E8E99' },
+  { id: 'p-shopper', name: 'Шоппер', category: 'accessories', price: 3500, costRub: 250, stock: 150, active: true, description: 'Плотный хлопок 220 г/м², внутренний карман, большой принт с ОТуПиком.', icon: 'shoppingbag', tone: '#9E6FC3' },
+  { id: 'p-headphones', name: 'Наушники Baseus W04', category: 'electronics', price: 8000, costRub: 1300, stock: 12, active: true, description: 'Беспроводные TWS-наушники, Bluetooth 5.3, до 25 часов с кейсом, сенсорное управление.', icon: 'headphones', tone: '#3A3A42' },
+  { id: 'p-powerbank', name: 'Пауэрбанк 10 000 мА·ч', category: 'electronics', price: 9000, costRub: 1500, stock: 45, active: true, description: 'Компактный, быстрая зарядка 20 Вт, USB-C и два USB-A.', icon: 'battery', tone: '#FF6A13' },
+  { id: 'p-speaker', name: 'Колонка JBL Flip 6', category: 'electronics', price: 50000, costRub: 8500, stock: 18, active: true, description: 'Портативная колонка JBL: защита IP67, 30 Вт, до 12 часов музыки, можно соединить две колонки.', icon: 'speaker', tone: '#6E6E78' },
+  { id: 'p-watch', name: 'Фитнес-браслет Xiaomi Smart Band 9', category: 'electronics', price: 16500, costRub: 2800, stock: 20, active: true, description: 'AMOLED-экран, пульс, сон, шаги и уведомления, до 21 дня без зарядки.', icon: 'watch', tone: '#1F1F24' },
   // Сертификаты: номинал 1 000 / 2 000 / 3 000 ₽ выбирается при покупке, 1 ₽ = 5 коинов (курс из кейса)
   { id: 'p-cert-ozon', name: 'Сертификат Ozon', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронный сертификат маркетплейса. Код придёт на рабочую почту.', icon: 'gift', tone: '#3A3A42' },
   { id: 'p-cert-wb', name: 'Сертификат Wildberries', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронный сертификат маркетплейса. Код придёт на рабочую почту.', icon: 'gift', tone: '#9E6FC3' },
   { id: 'p-cert-ga', name: 'Сертификат «Золотое яблоко»', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Косметика и парфюмерия. Электронный код придёт на рабочую почту.', icon: 'sparkles', tone: '#1F1F24' },
-  { id: 'p-cert-sport', name: 'Сертификат в спортзал', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Сеть фитнес-клубов в городах присутствия банка.', icon: 'dumbbell', tone: '#6E9E00' },
-  { id: 'p-cert-books', name: 'Сертификат в книжный', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Бумажные и электронные книги.', icon: 'book', tone: '#FF6A13' },
-  { id: 'p-toy', name: 'Игрушка ОТуПик', category: 'merch', price: 2000, costRub: 350, stock: 80, active: true, description: 'Мягкая игрушка для детей сотрудников.', icon: 'baby', tone: '#9E6FC3', minLevel: 2 },
-  { id: 'p-stickers', name: 'Набор стикеров', category: 'merch', price: 600, costRub: 80, stock: 300, active: true, description: '12 виниловых стикеров для ноутбука.', icon: 'sticker', tone: '#FF6A13' },
-  { id: 'p-notebook', name: 'Блокнот в точку', category: 'merch', price: 1200, costRub: 200, stock: 140, active: true, description: 'Формат A5, 160 страниц, твёрдая обложка.', icon: 'notebook', tone: '#1F1F24' },
-  { id: 'p-pet', name: 'Набор для питомца', category: 'merch', price: 1800, costRub: 300, stock: 60, active: true, description: 'Миска и бандана с принтом программы.', icon: 'paw', tone: '#6E6E78' },
+  { id: 'p-cert-sport', name: 'Сертификат DDX Fitness', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Абонемент или разовые визиты в клубы сети DDX Fitness. Электронный код придёт на рабочую почту.', icon: 'dumbbell', tone: '#6E9E00' },
+  { id: 'p-cert-books', name: 'Сертификат Литрес', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронные книги и аудиокниги. Код придёт на рабочую почту.', icon: 'book', tone: '#FF6A13' },
+  { id: 'p-toy', name: 'Игрушка ОТуПик', category: 'merch', price: 8000, costRub: 650, stock: 80, active: true, description: 'Мягкий ОТуПик ростом 25 см в фирменной бандане. Для детей сотрудников и рабочего стола.', icon: 'baby', tone: '#9E6FC3', minLevel: 2 },
+  { id: 'p-stickers', name: 'Набор стикеров', category: 'merch', price: 1200, costRub: 80, stock: 300, active: true, description: '12 виниловых стикеров с эмоциями ОТуПика для ноутбука и телефона.', icon: 'sticker', tone: '#FF6A13' },
+  { id: 'p-notebook', name: 'Эко-блокнот с ручкой', category: 'merch', price: 3800, costRub: 300, stock: 140, active: true, description: 'Формат A5 на спирали, 80 листов в точку, эко-обложка с логотипом ОТП, ручка в комплекте.', icon: 'notebook', tone: '#1F1F24' },
+  { id: 'p-pet', name: 'Набор для питомца', category: 'merch', price: 5000, costRub: 400, stock: 60, active: true, description: 'Миска и бандана как у ОТуПика: для вашей собаки или кошки.', icon: 'paw', tone: '#6E6E78' },
   { id: 'p-don-mayak', name: 'Пожертвование «Дому с маяком»', category: 'charity', price: 1000, costRub: 200, stock: 9999, active: true, description: 'Детский хоспис «Дом с маяком». 1 000 коинов = 200 ₽ фонду. Перечисляем раз в месяц.', icon: 'heart', tone: '#2f9e6a' },
   { id: 'p-don-bereginya', name: 'Пожертвование фонду «Берегиня»', category: 'charity', price: 1000, costRub: 200, stock: 9999, active: true, description: 'Благотворительный фонд «Берегиня». 1 000 коинов = 200 ₽ фонду. Перечисляем раз в месяц.', icon: 'heart', tone: '#9e6fc3' },
   { id: 'p-don-shelter', name: 'Корм для приюта', category: 'charity', price: 1000, costRub: 200, stock: 9999, active: true, description: 'Покупаем корм для приюта для собак: 1 000 коинов = 200 ₽ на корм.', icon: 'paw', tone: '#ff6a13' },
@@ -148,8 +147,7 @@ export const PRODUCTS: Product[] = [
   { id: 'p-remote', name: 'Дополнительный день удалённой работы', category: 'perks', currency: 'rucoins', price: 4000, costRub: 0, stock: 999, active: true, description: 'Ещё один день из дома сверх графика. Дату согласуйте с руководителем.', icon: 'home', tone: '#FF6A13' },
   { id: 'p-lunch', limited: true, name: 'Обед с членом правления', category: 'perks', currency: 'rucoins', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
   { id: 'p-mentor', name: 'Встреча с наставником из другой функции', category: 'perks', currency: 'rucoins', price: 8000, costRub: 0, stock: 999, active: true, description: 'Час с опытным руководителем другого направления: карьера, проект, обратная связь.', icon: 'mentor', tone: '#3A3A42' },
-  { id: 'p-masterclass', name: 'Мастер-класс по выбору', category: 'experiences', price: 7000, costRub: 1200, stock: 30, active: true, description: 'Гончарный, кулинарный или фото.', icon: 'sparkles', tone: '#FF6A13' },
-  { id: 'p-ski', limited: true, name: 'Выезд на горнолыжку с командой', category: 'experiences', price: 80000, costRub: 15000, stock: 6, active: true, description: 'Выходные на курорте для команды до 6 человек.', icon: 'mountain', tone: '#3A3A42' },
+  { id: 'p-psy', name: 'Сессия с психологом', category: 'experiences', price: 20000, costRub: 3000, stock: 999, active: true, description: 'Онлайн-консультация 50 минут с психологом сервиса-партнёра. Содержание сессии остаётся между вами и психологом. Не чаще одной сессии в месяц.', icon: 'heart', tone: '#9E6FC3' },
 ];
 
 const SETTINGS: Settings = {
@@ -166,16 +164,16 @@ const SETTINGS: Settings = {
   spinLimit: 20,
   metricTargets: { er: 0.75, coverage: 0.85, csi: 4.85, bankBudgetRub: 34_000_000, mutualMax: 0.15, top1Max: 0.05, formalMax: 0.15 },
   wheelPrizes: [
-    { id: 'w-badge', name: 'Бейдж или рамка в профиле', short: 'Бейдж', prob: 28, costRub: 0, digital: true },
+    { id: 'w-badge', name: 'Бейдж или рамка в профиле', short: 'Бейдж', prob: 30.2, costRub: 0, digital: true },
     { id: 'w-stickers', name: 'Значок или стикерпак ОТуПик', short: 'Стикерпак', prob: 21, costRub: 40 },
     { id: 'w-back', name: 'Возврат 500 коинов', short: '+500 коинов', prob: 15, costRub: 0, coins: 500 },
     { id: 'w-early', name: 'Ранний доступ к следующему дропу', short: 'Ранний доступ', prob: 15, costRub: 0, digital: true },
     { id: 'w-remote', name: 'День удалёнки', short: 'Удалёнка', prob: 5, costRub: 0, digital: true },
     { id: 'w-cashback', name: 'Повышенный кэшбек на категорию на месяц', short: 'Кэшбек', prob: 5, costRub: 500, digital: true },
     { id: 'w-late', name: 'Поздний приход или ранний уход', short: 'Поздний приход', prob: 5, costRub: 0, digital: true },
-    { id: 'w-toy', name: 'Игрушка ОТуПик', short: 'Игрушка', prob: 5, costRub: 350 },
+    { id: 'w-toy', name: 'Игрушка ОТуПик', short: 'Игрушка', prob: 2.8, costRub: 650 },
     { id: 'w-dayoff', name: 'Дополнительный выходной', short: 'Выходной', prob: 0.8, costRub: 0, digital: true },
-    { id: 'w-hoodie', name: 'Джекпот: лимитированное худи ОТуПик', short: 'Худи', prob: 0.1, costRub: 2500 },
+    { id: 'w-hoodie', name: 'Джекпот: лимитированное худи ОТуПик', short: 'Худи', prob: 0.1, costRub: 1600 },
     { id: 'w-cert', name: 'Джекпот: сертификат 1 000 ₽ на выбор', short: 'Сертификат', prob: 0.1, costRub: 1000, digital: true },
   ],
   accrualCategories: ACCRUAL_CATEGORIES,
@@ -247,7 +245,7 @@ export function createSeed(now = Date.now()): DB {
     color: COLORS[i % COLORS.length],
     joinedAt: START - Math.floor(r() * 900) * DAY,
     lastActiveAt: START,
-    pet: { name: 'ОТуПик', xp: Math.round((r() * r() * 26000) / 100) * 100, fedAt: START },
+    pet: { name: 'ОТуПик', xp: Math.round((r() * r() * 10000) / 100) * 100, fedAt: START },
   }));
   const U = (mail: string) => users.find((u) => u.email.startsWith(mail + '@'))!;
   const inactive = new Set(users.filter((u) => INACTIVE.has(u.email.split('@')[0])).map((u) => u.id));
@@ -467,7 +465,7 @@ export function createSeed(now = Date.now()): DB {
   const demo = U('a.smirnov');
   accrue(mgr('retail'), demo, now - 2 * DAY, 'initiative', 4500, 'Собрал дашборд по оттоку клиентов: отдел удержал 40 счетов за месяц');
   demo.lastActiveAt = now - 3600_000;
-  demo.pet.xp = 5200; // 3 уровень: открыты мерч, ОТуПик, аксессуары и одежда
+  demo.pet.xp = 2100; // 3 уровень: открыты мерч, ОТуПик, аксессуары и одежда; до сертификатов 900 опыта
 
   // Остатки из прошлой версии программы (накоп)
   for (const u of users) {
@@ -523,6 +521,7 @@ export function createSeed(now = Date.now()): DB {
     goals: GOALS,
     articles: ARTICLES,
     pulses,
+    tickets: seedTickets(users, now),
     settings: { ...SETTINGS, managerFunds },
     signalStatus: {},
     carts: {},
@@ -552,4 +551,24 @@ export function seedPulses(users: User[], accruals: Accrual[], orders: Order[], 
     out.push({ id: 'pl_' + o.id, ts: o.ts + Math.floor((3 + r() * 8) * DAY), userId: o.userId, q: 'desire', score: score(base), refId: o.id });
   }
   return out.filter((p) => p.ts < now).sort((a, b) => a.ts - b.ts);
+}
+
+/** Пара обращений в техподдержку, чтобы администратору было что разобрать в демо. */
+function seedTickets(users: User[], now: number): Ticket[] {
+  const admin = users.find((u) => u.role === 'admin');
+  const emps = users.filter((u) => u.role === 'employee' && u.email !== 'a.smirnov@mania.demo');
+  if (!admin || emps.length < 2) return [];
+  const [a, b] = emps;
+  const m = (ts: number, who: User, text: string) => ({ id: `sm_${who.id}_${ts}`, ts, authorId: who.id, text, staff: who.role === 'admin' && who.id === admin.id });
+  const t1 = now - 3 * 3_600_000;
+  const t2 = now - 4 * DAY;
+  return [
+    { id: 'tk_demo1', userId: a.id, topic: 'Заказ и доставка', status: 'open', createdAt: t1, updatedAt: t1, userReadAt: t1, staffReadAt: 0,
+      messages: [m(t1, a, 'Здравствуйте! Заказал термокружку неделю назад, статус всё ещё «Собирается». Подскажите, когда можно забрать?')] },
+    { id: 'tk_demo2', userId: b.id, topic: 'Коины и РуКоины', status: 'closed', createdAt: t2, updatedAt: t2 + 5_400_000, userReadAt: t2 + 6_000_000, staffReadAt: t2 + 5_400_000,
+      messages: [
+        m(t2, b, 'Руководитель начислил РуКоины, а в балансе их не вижу.'),
+        m(t2 + 5_400_000, admin, 'Добрый день! Начисление прошло, просто страница не обновилась. Обновите профиль, РуКоины уже на балансе.'),
+      ] },
+  ];
 }

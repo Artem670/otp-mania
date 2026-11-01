@@ -369,18 +369,23 @@ export function signals(db: DB, now = Date.now()): Signal[] {
 
 /* ---------------- Питомец ---------------- */
 /** Каждый уровень питомца открывает новую витрину магазина. Сертификаты, самые дорогие для банка, открываются последними. */
+/**
+ * Уровни питомца. Пороги сверены с финмоделью: эмиссия ~29 тыс. коинов на сотрудника в год,
+ * на питомца по плану ~15% трат. До сертификатов (4 уровень) ~2,7 тыс. коинов, до «Легенды» ~7 тыс.
+ */
 export const PET_LEVELS = [
-  { xp: 0, title: 'Малыш', perk: 'Мерч компании: стикеры, блокноты, наборы для питомцев' },
-  { xp: 1500, title: 'Непоседа', perk: 'Игрушки ОТуПик и аксессуары' },
-  { xp: 4000, title: 'Подросток', perk: 'Одежда' },
-  { xp: 8000, title: 'Знаток', perk: 'Электроника' },
-  { xp: 13000, title: 'Мастер', perk: 'Впечатления' },
-  { xp: 20000, title: 'Легенда', perk: 'Сертификаты' },
+  { xp: 0, title: 'Малыш', perk: 'Мерч компании, благотворительность, забота о себе' },
+  { xp: 500, title: 'Непоседа', perk: 'Игрушки ОТуПик и аксессуары' },
+  { xp: 1500, title: 'Подросток', perk: 'Одежда' },
+  { xp: 3000, title: 'Знаток', perk: 'Сертификаты' },
+  { xp: 5000, title: 'Мастер', perk: 'Электроника' },
+  { xp: 8000, title: 'Легенда', perk: 'Лимитированные дропы' },
 ];
 export const petLevel = (xp: number) => PET_LEVELS.reduce((l, L, i) => (xp >= L.xp ? i + 1 : l), 1);
-export const CATEGORY_LEVEL: Record<ProductCategory, number> = { perks: 1, charity: 1, merch: 1, accessories: 2, clothes: 3, electronics: 4, experiences: 5, certificates: 6 };
-export const productLevel = (p: Pick<Product, 'category' | 'minLevel'>) => p.minLevel ?? CATEGORY_LEVEL[p.category];
-export const isUnlocked = (p: Pick<Product, 'category' | 'minLevel'>, xp: number) => petLevel(xp) >= productLevel(p);
+export const CATEGORY_LEVEL: Record<ProductCategory, number> = { perks: 1, charity: 1, merch: 1, experiences: 1, accessories: 2, clothes: 3, certificates: 4, electronics: 5 };
+/** Лимитки за коины открываются на последнем уровне питомца. */
+export const productLevel = (p: Pick<Product, 'category' | 'minLevel'> & { limited?: boolean; currency?: Product['currency'] }) => p.minLevel ?? (p.limited && p.currency !== 'rucoins' ? 6 : CATEGORY_LEVEL[p.category]);
+export const isUnlocked = (p: Pick<Product, 'category' | 'minLevel'> & { limited?: boolean; currency?: Product['currency'] }, xp: number) => petLevel(xp) >= productLevel(p);
 
 /* ---------------- Колесо удачи ---------------- */
 /** Выбирает приз по вероятностям: rnd от 0 до 1. */

@@ -60,7 +60,7 @@ export function getState(): DB {
 }
 
 /* ---------- Отображение DB ↔ строки таблицы docs ---------- */
-const ARRAYS = ['users', 'departments', 'txs', 'accruals', 'conversions', 'thanks', 'products', 'orders', 'pools', 'notifications', 'events', 'news', 'goals', 'articles', 'pulses'] as const;
+const ARRAYS = ['users', 'departments', 'txs', 'accruals', 'conversions', 'thanks', 'products', 'orders', 'pools', 'notifications', 'events', 'news', 'goals', 'articles', 'pulses', 'tickets'] as const;
 type ArrKey = (typeof ARRAYS)[number];
 const key = (c: string, id: string) => c + '\u0000' + id;
 
@@ -76,7 +76,7 @@ function toRows(db: DB): Map<string, DocRow> {
 
 function emptyDB(): DB {
   const s = createSeed(); // берём настройки и справочники по умолчанию, если в базе их ещё нет
-  return { ...s, users: [], departments: [], txs: [], accruals: [], conversions: [], thanks: [], products: [], orders: [], pools: [], notifications: [], events: [], news: [], goals: [], articles: [], pulses: [], signalStatus: {}, carts: {}, sessionUserId: null };
+  return { ...s, users: [], departments: [], txs: [], accruals: [], conversions: [], thanks: [], products: [], orders: [], pools: [], notifications: [], events: [], news: [], goals: [], articles: [], pulses: [], tickets: [], signalStatus: {}, carts: {}, sessionUserId: null };
 }
 
 /** Накатывает строки на состояние: добавляет, заменяет, удаляет. */
@@ -184,8 +184,45 @@ async function migrate(db: DB) {
     });
   }
   // База знаний: новые статьи по всем механикам (пишет только администратор)
-  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || db.articles.some((a) => /не стоит банку|Что считает программа/.test(a.body))) {
+  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || db.articles.some((a) => /не стоит банку|Что считает программа|Легенда \(20 000\)|Впечатлени/.test(a.body))) {
     await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
+  }
+  // Пересчёт цен (версия 13): цена = розница аналога × 5, себестоимость = закупка тиражом. Трогаем только цены, которые админ не менял.
+  const OLD_PRICES: Record<string, number> = {
+    'p-hoodie': 9000, 'p-tee': 3500, 'p-jacket': 14000, 'p-beanie': 2500, 'p-mug': 2800, 'p-backpack': 8500, 'p-umbrella': 3200, 'p-shopper': 1500,
+    'p-headphones': 24000, 'p-powerbank': 6000, 'p-speaker': 12000, 'p-watch': 15000, 'p-toy': 2000, 'p-stickers': 600, 'p-notebook': 1200,
+    'p-pet': 1800, 'p-masterclass': 7000, 'p-ski': 80000,
+  };
+  if (db.products.some((p) => OLD_PRICES[p.id] === p.price)) {
+    const fresh = createSeed(now);
+    const repriced = db.products.flatMap((p) => {
+      const f = fresh.products.find((x) => x.id === p.id);
+      return f && OLD_PRICES[p.id] === p.price ? [{ ...p, name: f.name, price: f.price, costRub: f.costRub, description: f.description }] : [];
+    });
+    await tryUpsert(repriced.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { repriced.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });
+  }
+  // Психолог вместо мастер-класса, горнолыжный выезд снят с продажи
+  if (!db.products.some((p) => p.id === 'p-psy') || db.products.some((p) => (p.id === 'p-masterclass' || p.id === 'p-ski') && p.active)) {
+    const fresh = createSeed(now);
+    const psy = db.products.some((p) => p.id === 'p-psy') ? [] : fresh.products.filter((p) => p.id === 'p-psy');
+    const off = db.products.filter((p) => (p.id === 'p-masterclass' || p.id === 'p-ski') && p.active).map((p) => ({ ...p, active: false }));
+    const rows = [...psy, ...off];
+    await tryUpsert(rows.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { rows.forEach((p) => { const i = db.products.findIndex((x) => x.id === p.id); if (i >= 0) db.products[i] = p; else db.products.push(p); }); });
+  }
+  // Партнёры сертификатов и новый блокнот: обновляем названия и описания, если админ их не менял
+  const RENAMED: Record<string, string> = { 'p-cert-sport': 'Сертификат в спортзал', 'p-cert-books': 'Сертификат в книжный', 'p-notebook': 'Блокнот в точку' };
+  if (db.products.some((p) => RENAMED[p.id] === p.name)) {
+    const fresh = createSeed(now);
+    const renamed = db.products.flatMap((p) => { const f = fresh.products.find((x) => x.id === p.id); return f && RENAMED[p.id] === p.name ? [{ ...p, name: f.name, description: f.description }] : []; });
+    await tryUpsert(renamed.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { renamed.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });
+  }
+  // Колесо: игрушка подорожала до 650 ₽, поэтому шанс снижен, чтобы прокрутка стоила банку не больше, чем в финмодели
+  const wToy = db.settings.wheelPrizes?.find((w) => w.id === 'w-toy');
+  if (wToy && wToy.prob === 5 && wToy.costRub === 350) {
+    const fresh = createSeed(now).settings.wheelPrizes;
+    const prizes = db.settings.wheelPrizes.map((w) => (['w-toy', 'w-badge', 'w-hoodie'].includes(w.id) ? { ...w, prob: fresh.find((f) => f.id === w.id)?.prob ?? w.prob, costRub: fresh.find((f) => f.id === w.id)?.costRub ?? w.costRub } : w));
+    const settings = { ...db.settings, wheelPrizes: prizes };
+    await tryUpsert([{ collection: 'settings', id: 'main', data: settings }], () => { db.settings = settings; });
   }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {
     const formal = ACCRUAL_CATEGORIES.filter((c) => c.formal);
