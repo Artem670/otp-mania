@@ -21,7 +21,7 @@ const res = await build({
   jsx: 'automatic',
   nodePaths: [NM],
   define: { 'process.env.NODE_ENV': '"production"', __SUPABASE_URL__: JSON.stringify(cfg.url), __SUPABASE_ANON_KEY__: JSON.stringify(cfg.anonKey) },
-  loader: { '.css': 'css', '.png': 'dataurl', '.jpg': 'dataurl' },
+  loader: { '.css': 'css', '.png': 'dataurl', '.jpg': 'dataurl', '.webp': 'dataurl' },
   logLevel: 'warning',
 });
 const js = res.outputFiles.find((f) => f.path.endsWith('.js')).text;

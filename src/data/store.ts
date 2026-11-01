@@ -210,10 +210,10 @@ async function migrate(db: DB) {
     await tryUpsert(rows.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { rows.forEach((p) => { const i = db.products.findIndex((x) => x.id === p.id); if (i >= 0) db.products[i] = p; else db.products.push(p); }); });
   }
   // Партнёры сертификатов и новый блокнот: обновляем названия и описания, если админ их не менял
-  const RENAMED: Record<string, string> = { 'p-cert-sport': 'Сертификат в спортзал', 'p-cert-books': 'Сертификат в книжный', 'p-notebook': 'Блокнот в точку' };
+  const RENAMED: Record<string, string> = { 'p-speaker': 'Колонка JBL Flip 6', 'p-cert-sport': 'Сертификат в спортзал', 'p-cert-books': 'Сертификат в книжный', 'p-notebook': 'Блокнот в точку' };
   if (db.products.some((p) => RENAMED[p.id] === p.name)) {
     const fresh = createSeed(now);
-    const renamed = db.products.flatMap((p) => { const f = fresh.products.find((x) => x.id === p.id); return f && RENAMED[p.id] === p.name ? [{ ...p, name: f.name, description: f.description }] : []; });
+    const renamed = db.products.flatMap((p) => { const f = fresh.products.find((x) => x.id === p.id); return f && RENAMED[p.id] === p.name ? [{ ...p, name: f.name, description: f.description, ...(p.id === 'p-speaker' && p.price === 50000 ? { price: f.price, costRub: f.costRub } : {}) }] : []; });
     await tryUpsert(renamed.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { renamed.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });
   }
   // Колесо: игрушка подорожала до 650 ₽, поэтому шанс снижен, чтобы прокрутка стоила банку не больше, чем в финмодели

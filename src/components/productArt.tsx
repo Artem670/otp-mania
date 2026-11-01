@@ -6,14 +6,15 @@ import bandana from '../assets/shop/bandana.jpg';
 import side from '../assets/shop/side.jpg';
 import notebookPhoto from '../assets/shop/notebook.jpg';
 import powerbankPhoto from '../assets/shop/powerbank.jpg';
-import toyCut from '../assets/shop/toy.png';
+import toyPhoto from '../assets/shop/toy.jpg';
 import bandCut from '../assets/shop/band.png';
 import earbudsCut from '../assets/shop/earbuds.png';
 import certOzon from '../assets/shop/cert-ozon.png';
-import certWb from '../assets/shop/cert-wb.png';
-import certGa from '../assets/shop/cert-ga.png';
-import certLitres from '../assets/shop/cert-litres.png';
+import certWb from '../assets/shop/cert-wb.webp';
+import certGa from '../assets/shop/cert-ga.webp';
+import certLitres from '../assets/shop/cert-litres.webp';
 import certDdx from '../assets/shop/cert-ddx.jpg';
+import jblCut from '../assets/shop/jbl.webp';
 import fundMayak from '../assets/shop/fund-mayak.jpg';
 import fundBereginya from '../assets/shop/fund-bereginya.jpg';
 
@@ -25,9 +26,10 @@ type Photo = { src: string; kind: 'cover' | 'cut' | 'card' | 'logo'; cert?: bool
 const PHOTOS: Record<string, Photo> = {
   'p-notebook': { src: notebookPhoto, kind: 'cover' },
   'p-powerbank': { src: powerbankPhoto, kind: 'cover' },
-  'p-toy': { src: toyCut, kind: 'cut' },
+  'p-toy': { src: toyPhoto, kind: 'cover' },
   'p-watch': { src: bandCut, kind: 'cut' },
   'p-headphones': { src: earbudsCut, kind: 'cut' },
+  'p-speaker': { src: jblCut, kind: 'cut' },
   'p-cert-ozon': { src: certOzon, kind: 'cut', cert: true },
   'p-cert-wb': { src: certWb, kind: 'cut', cert: true },
   'p-cert-ga': { src: certGa, kind: 'cut', cert: true },
