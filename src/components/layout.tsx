@@ -7,7 +7,7 @@ import { ROLE_LABELS } from '../data/types';
 import { useRouter } from '../lib/router';
 import { ago, cx, fmt } from '../lib/utils';
 import { Avatar, Coin, useAction } from './ui';
-import { OtpLogo, SpaceDots } from './brand';
+import { OtpLogo } from './brand';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
 } from './icons';
@@ -158,7 +158,7 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
       <button className="icon-btn menu-toggle" onClick={onMenu} aria-label="Открыть меню"><Menu size={18} /></button>
       <button className="logo" onClick={() => navigate('/cabinet')} aria-label="ОТП Мания, на главную">
         <OtpLogo size={34} />
-        <span><span className="row-sm" style={{ gap: 6 }}>ОТП Мания <SpaceDots height={8} /></span><small>Корпоративный портал</small></span>
+        <span style={{ textAlign: 'left' }}>ОТП Мания<small>Корпоративный портал</small></span>
       </button>
       <GlobalSearch mobileOpen={searchOpen} onClose={() => setSearchOpen(false)} />
       <div className="top-actions" ref={wrap}>

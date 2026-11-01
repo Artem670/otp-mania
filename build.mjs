@@ -26,6 +26,8 @@ const res = await build({
 });
 const js = res.outputFiles.find((f) => f.path.endsWith('.js')).text;
 const favicon = 'data:image/png;base64,' + readFileSync('src/assets/otp-logo.png').toString('base64');
+const fontUrl = 'data:font/woff;base64,' + readFileSync('src/assets/fonts/onest.woff').toString('base64');
+const fontFace = `@font-face{font-family:'Onest';src:url(${fontUrl}) format('woff');font-weight:100 900;font-style:normal;font-display:swap}`;
 const css = res.outputFiles.find((f) => f.path.endsWith('.css'))?.text ?? '';
 mkdirSync('dist', { recursive: true });
 const html = `<!doctype html>
@@ -35,9 +37,7 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ОТП Мания</title>
 <link rel="icon" type="image/png" href="${favicon}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>${css}</style>
+<style>${fontFace}${css}</style>
 </head>
 <body>
 <div id="root"></div>

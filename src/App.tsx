@@ -5,7 +5,7 @@ import { me as selectMe } from './data/selectors';
 import type { Role } from './data/types';
 import { match, useRouter } from './lib/router';
 import { AppLayout } from './components/layout';
-import { OtpLogo, SpaceDots } from './components/brand';
+import { OtpLogo } from './components/brand';
 import { Button, Empty, Field, Modal, PageSkeleton, Skeleton, useAction, useToast } from './components/ui';
 import { Alert, Lock } from './components/icons';
 import Login from './pages/Login';
@@ -106,7 +106,7 @@ export default function App() {
   useEffect(load, []);
   if (state === 'loading') return (
     <div style={{ padding: 24 }} aria-busy="true">
-      <div className="row between"><div className="row"><OtpLogo size={34} /><b>ОТП Мания</b><SpaceDots height={8} /><span className="small muted">Загружаем портал…</span></div><Skeleton h={38} w={260} r={999} /></div>
+      <div className="row between"><div className="row"><OtpLogo size={34} /><b>ОТП Мания</b><span className="small muted">Загружаем портал…</span></div><Skeleton h={38} w={260} r={999} /></div>
       <div className="mt-24" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 28 }}>
         <div className="col">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} h={38} />)}</div>
         <PageSkeleton />

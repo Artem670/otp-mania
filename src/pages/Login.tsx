@@ -5,7 +5,7 @@ import type { Role } from '../data/types';
 import { Button, Field, useAction } from '../components/ui';
 import { Briefcase, Key, Mail, ShieldAlert, UserIcon, ArrowRight } from '../components/icons';
 import { useRouter } from '../lib/router';
-import { OtpLogo, SpaceDots } from '../components/brand';
+import { OtpLogo } from '../components/brand';
 
 const ROLES: { role: Role; title: string; text: string; icon: typeof UserIcon }[] = [
   { role: 'employee', title: 'Сотрудник', text: 'Алексей Смирнов, аналитик продаж', icon: UserIcon },
@@ -53,7 +53,7 @@ export default function Login() {
   return (
     <div className="login">
       <div className="login-art">
-        <div className="row" style={{ position: 'relative' }}><OtpLogo size={40} radius={11} /><b style={{ fontSize: 18 }}>ОТП Мания</b><SpaceDots height={9} /></div>
+        <div className="row" style={{ position: 'relative' }}><OtpLogo size={40} radius={11} /><b style={{ fontSize: 18 }}>ОТП Мания</b></div>
         <div className="login-ring" /><div className="login-ring two" />
         <div style={{ position: 'relative' }}>
           <div className="badge orange mb-16">Программа признания</div>
@@ -64,7 +64,7 @@ export default function Login() {
       </div>
       <div className="login-form">
         <div className="login-box">
-          <div className="row mb-16"><OtpLogo size={44} radius={12} /><div><div className="strong">ОТП Банк</div><div className="xs muted row-sm">Программа признания ОТП Мания <SpaceDots height={7} /></div></div></div>
+          <div className="row mb-16"><OtpLogo size={44} radius={12} /><div><div className="strong">ОТП Банк</div><div className="xs muted">Программа признания ОТП Мания</div></div></div>
           {sent ? (
             <div className="card soft" data-testid="check-email">
               <Mail size={28} />
