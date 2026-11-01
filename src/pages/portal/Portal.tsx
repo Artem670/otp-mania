@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
-import { me as selectMe } from '../../data/selectors';
-import { cx, fmtDate, plural } from '../../lib/utils';
+import { me as selectMe, THANKS_WEIGHT } from '../../data/selectors';
+import type { DB } from '../../data/types';
+import { useRouter } from '../../lib/router';
+import { cx, fmt, fmtDate, plural } from '../../lib/utils';
 import { Badge, Button, Card, Empty, PageHeader, PageSkeleton, Progress, useAction, usePageLoading } from '../../components/ui';
 import { BookOpen, Calendar, Check, MapPin, News, Search, Target, Users } from '../../components/icons';
 
@@ -101,28 +103,94 @@ export function StrategyPage() {
   );
 }
 
-export function KbPage() {
+/** Подставляет значения из настроек программы: {{rate}}, {{maxPerAccrual}} и т. д. */
+function fill(text: string, st: DB['settings']) {
+  const v: Record<string, string> = {
+    rate: String(st.conversionRate).replace('.', ','), maxPerAccrual: fmt(st.maxPerAccrual), maxPerEmployeeMonth: fmt(st.maxPerEmployeeMonth),
+    minComment: String(st.minCommentLength), spinPrice: fmt(st.spinPrice), spinLimit: String(st.spinLimit), thanksWeight: fmt(THANKS_WEIGHT),
+  };
+  return text.replace(/\{\{(\w+)\}\}/g, (m, k) => v[k] ?? m);
+}
+const plain = (t: string) => t.replace(/\*\*/g, '').replace(/^## /gm, '').replace(/^- /gm, '');
+const excerpt = (t: string) => plain(t).split(/\n\n/)[0].replace(/\n/g, ' ');
+
+/** Жирный текст внутри строки. */
+function Inline({ text }: { text: string }) {
+  return <>{text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith('**') && part.endsWith('**') ? <b key={i}>{part.slice(2, -2)}</b> : part))}</>;
+}
+/** Простая разметка статьи: заголовки, списки, абзацы. Без innerHTML. */
+function ArticleBody({ text }: { text: string }) {
+  const blocks = text.split(/\n\s*\n/);
+  return (
+    <div className="kb-body">
+      {blocks.map((b, i) => {
+        const lines = b.split('\n');
+        if (lines[0].startsWith('## ')) {
+          const rest = lines.slice(1);
+          return <div key={i}><h2 id={`s${i}`}>{lines[0].slice(3)}</h2>{rest.length > 0 && <ArticleBody text={rest.join('\n')} />}</div>;
+        }
+        if (lines.every((l) => l.startsWith('- '))) return <ul key={i}>{lines.map((l, j) => <li key={j}><Inline text={l.slice(2)} /></li>)}</ul>;
+        return <p key={i}><Inline text={lines.join(' ')} /></p>;
+      })}
+    </div>
+  );
+}
+
+export function KbPage({ openId }: { openId?: string }) {
   const db = useDB();
-  const loading = usePageLoading('kb', 250);
+  const { navigate } = useRouter();
+  const loading = usePageLoading('kb' + (openId ?? ''), 250);
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
-  const list = useMemo(() => db.articles.filter((a) => !q.trim() || (a.title + a.body).toLowerCase().includes(q.trim().toLowerCase())), [db, q]);
+  const [cat, setCat] = useState('all');
+  const cats = useMemo(() => [...new Set(db.articles.map((a) => a.category))], [db]);
+  const list = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return db.articles.filter((a) => (cat === 'all' || a.category === cat) && (!s || (a.title + ' ' + fill(a.body, db.settings)).toLowerCase().includes(s)));
+  }, [db, q, cat]);
   if (loading) return <PageSkeleton />;
+
+  if (openId) {
+    const a = db.articles.find((x) => x.id === openId);
+    if (!a) return <div className="card"><Empty icon={BookOpen} title="Статья не найдена" text="Возможно, её удалили или ссылка устарела." action={<Button onClick={() => navigate('/kb')}>Ко всем статьям</Button>} /></div>;
+    const text = fill(a.body, db.settings);
+    const toc = text.split(/\n\s*\n/).map((b, i) => (b.startsWith('## ') ? { id: `s${i}`, title: b.split('\n')[0].slice(3) } : null)).filter(Boolean) as { id: string; title: string }[];
+    const related = db.articles.filter((x) => x.id !== a.id && x.category === a.category).concat(db.articles.filter((x) => x.id !== a.id && x.category !== a.category)).slice(0, 4);
+    return (
+      <div className="stack-24">
+        <div><button type="button" className="link-btn" onClick={() => navigate('/kb')} data-testid="kb-back">← Все статьи</button></div>
+        <div className="kb-layout">
+          <article className="card kb-article" data-testid="kb-article">
+            <Badge tone={a.category === 'Начало работы' ? 'orange' : undefined}>{a.category}</Badge>
+            <h1 className="mt-12">{a.title}</h1>
+            <ArticleBody text={text} />
+          </article>
+          <aside className="stack-16">
+            {toc.length > 1 && <Card title="В этой статье"><div className="col" style={{ gap: 6 }}>{toc.map((t) => <button key={t.id} type="button" className="link-btn" style={{ textAlign: 'left', textDecoration: 'none', fontWeight: 500 }} onClick={() => document.getElementById(t.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t.title}</button>)}</div></Card>}
+            <Card title="Ещё по теме"><div className="col" style={{ gap: 8 }}>{related.map((r) => <button key={r.id} type="button" className="kb-mini" onClick={() => navigate(`/kb/${r.id}`)}><BookOpen size={15} /><span>{r.title}</span></button>)}</div></Card>
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="stack-24">
-      <PageHeader title="База знаний" subtitle="Правила программы, инструкции и регламенты" actions={<div className="input-wrap" style={{ width: 280 }}><Search size={16} /><input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по статьям" aria-label="Поиск по статьям" /></div>} />
+      <PageHeader title="База знаний" subtitle="Как работает ОТП Мания: валюты, магазин, питомец, сборы, вход и правила для руководителей" actions={<div className="input-wrap" style={{ width: 280 }}><Search size={16} /><input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по статьям" aria-label="Поиск по статьям" data-testid="kb-search" /></div>} />
+      <div className="chips" role="tablist" aria-label="Разделы">
+        {['all', ...cats].map((c) => <button key={c} role="tab" aria-selected={cat === c} className={cx('chip', cat === c && 'on')} onClick={() => setCat(c)}>{c === 'all' ? 'Все статьи' : c}<span className="count">{c === 'all' ? db.articles.length : db.articles.filter((a) => a.category === c).length}</span></button>)}
+      </div>
       {list.length ? (
-        <div className="grid g2">
+        <div className="grid g3 kb-grid">
           {list.map((a) => (
-            <Card key={a.id}>
-              <Badge tone={a.category === 'ОТП Мания' ? 'orange' : undefined}>{a.category}</Badge>
+            <button key={a.id} type="button" className="card kb-card" onClick={() => navigate(`/kb/${a.id}`)} data-testid={`kb-${a.id}`}>
+              <Badge tone={a.category === 'Начало работы' ? 'orange' : undefined}>{a.category}</Badge>
               <h3 className="mt-12 row-sm"><BookOpen size={17} />{a.title}</h3>
-              <p className={cx('small text-2 mt-8', open !== a.id && 'ellipsis')}>{a.body}</p>
-              <Button variant="ghost" size="sm" className="mt-8" onClick={() => setOpen(open === a.id ? null : a.id)}>{open === a.id ? 'Свернуть' : 'Читать полностью'}</Button>
-            </Card>
+              <p className="small text-2 mt-8 kb-excerpt">{excerpt(fill(a.body, db.settings))}</p>
+              <span className="small strong mt-12" style={{ marginTop: 'auto', paddingTop: 12 }}>Читать →</span>
+            </button>
           ))}
         </div>
-      ) : <div className="card"><Empty icon={BookOpen} title="Ничего не найдено" text={`По запросу «${q}» статей нет`} /></div>}
+      ) : <div className="card"><Empty icon={BookOpen} title="Ничего не найдено" text={q ? `По запросу «${q}» статей нет. Попробуйте другое слово.` : 'В этом разделе пока нет статей.'} action={<Button variant="secondary" onClick={() => { setQ(''); setCat('all'); }}>Сбросить</Button>} /></div>}
     </div>
   );
 }

@@ -112,7 +112,7 @@ function GlobalSearch({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: (
       people: db.users.filter((u) => u.name.toLowerCase().includes(s) || u.title.toLowerCase().includes(s)).slice(0, 5),
       products: db.products.filter((p) => p.active && p.name.toLowerCase().includes(s)).slice(0, 4),
       news: db.news.filter((n) => n.title.toLowerCase().includes(s)).slice(0, 3),
-      kb: db.articles.filter((a) => a.title.toLowerCase().includes(s)).slice(0, 3),
+      kb: db.articles.filter((a) => (a.title + ' ' + a.body).toLowerCase().includes(s)).slice(0, 3),
     };
   }, [q, db]);
   const go = (to: string) => { navigate(to); setQ(''); setFocus(false); onClose(); };
@@ -131,7 +131,7 @@ function GlobalSearch({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: (
           {!!res.news.length && <div className="search-group">Новости</div>}
           {res.news.map((n) => <button key={n.id} className="search-item small" onMouseDown={() => go('/news')}>{n.title}</button>)}
           {!!res.kb.length && <div className="search-group">База знаний</div>}
-          {res.kb.map((a) => <button key={a.id} className="search-item small" onMouseDown={() => go('/kb')}>{a.title}</button>)}
+          {res.kb.map((a) => <button key={a.id} className="search-item small" onMouseDown={() => go(`/kb/${a.id}`)}>{a.title}</button>)}
         </div>
       )}
     </div>

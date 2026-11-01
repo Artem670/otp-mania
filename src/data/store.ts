@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { DB } from './types';
 import { ACCRUAL_CATEGORIES, createSeed, DB_VERSION, PRODUCTS, seedPulses } from './seed';
+import { ARTICLES } from './articles';
 import { docs, RemoteError, type DocRow } from './remote';
 
 /**
@@ -152,6 +153,10 @@ async function migrate(db: DB) {
     await tryUpsert(newPools.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { db.pools.push(...newPools); });
     const oldCharity = db.pools.filter((p) => p.id === 'pool2' && !p.kind).map((p) => ({ ...p, kind: 'charity' as const }));
     await tryUpsert(oldCharity.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { oldCharity.forEach((p) => { db.pools[db.pools.findIndex((x) => x.id === p.id)] = p; }); });
+  }
+  // База знаний: новые статьи по всем механикам (пишет только администратор)
+  if (!db.articles.some((a) => a.id === 'kb10')) {
+    await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
   }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {
     const formal = ACCRUAL_CATEGORIES.filter((c) => c.formal);

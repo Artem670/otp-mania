@@ -36,6 +36,7 @@ const ROUTES: R[] = [
   { pattern: '/events', render: () => <EventsPage /> },
   { pattern: '/strategy', render: () => <StrategyPage /> },
   { pattern: '/kb', render: () => <KbPage /> },
+  { pattern: '/kb/:id', render: (p) => <KbPage key={p.id} openId={p.id} /> },
   { pattern: '/employees', render: () => <Employees /> },
   { pattern: '/employees/:id', render: (p) => <Employees openId={p.id} /> },
   { pattern: '/cabinet', render: () => <Profile /> },
