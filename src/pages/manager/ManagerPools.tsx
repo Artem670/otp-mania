@@ -48,7 +48,7 @@ export function CreatePoolModal({ open, onClose }: { open: boolean; onClose: () 
       footer={<><Button variant="secondary" onClick={onClose}>Отмена</Button><Button loading={busy === 'create'} onClick={submit} data-testid="pool-create-submit">Создать сбор</Button></>}>
       <div className="grid g2" style={{ gap: 16 }}>
         <div className="col" style={{ gap: 14 }}>
-          <Field label="Тип сбора" hint={f.kind === 'charity' ? 'Банк удвоит всё, что соберут сотрудники' : 'Выезд, квиз, кофемашина, подарок: всё, что сплачивает команду'}>
+          <Field label="Тип сбора" hint={f.kind === 'charity' ? 'Собранные коины передаются фонду по курсу программы' : 'Выезд, квиз, кофемашина, подарок: всё, что сплачивает команду'}>
             <div className="seg" role="radiogroup" aria-label="Тип сбора">
               <button type="button" className={f.kind === 'team' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, kind: 'team' }))}>Для команды</button>
               <button type="button" className={f.kind === 'charity' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, kind: 'charity', image: 'heart' }))}>Благотворительность</button>

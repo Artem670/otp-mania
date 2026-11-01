@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
-import { charityTotals, deptName, me as selectMe, poolMatch, poolParticipants, poolRaised, poolVisibleTo, userById } from '../../data/selectors';
+import { charityTotals, deptName, me as selectMe, poolParticipants, poolRaised, poolVisibleTo, userById } from '../../data/selectors';
 import { POOL_KIND_LABELS, POOL_STATUS_LABELS, type Pool } from '../../data/types';
 import { DAY, fmt, fmtDate, plural } from '../../lib/utils';
 import { Amount, Avatar, Badge, Button, Coin, Empty, Field, Modal, PageHeader, PageSkeleton, PoolCover, Progress, Seg, useAction, usePageLoading } from '../../components/ui';
@@ -21,7 +21,7 @@ export function PoolCard({ p, actions }: { p: Pool; actions?: ReactNode }) {
     <article className="pool" data-testid={`pool-${p.id}`}>
       <PoolCover image={p.image}><Badge tone={p.status === 'active' ? 'orange' : p.status === 'completed' ? 'green' : 'red'}>{POOL_STATUS_LABELS[p.status]}</Badge></PoolCover>
       <div className="pool-body">
-        <div className="row-sm row-wrap"><span className="xs muted">{deptName(db, p.scope)}</span>{p.kind === 'charity' ? <Badge tone="green">Благотворительность · банк ×2</Badge> : <Badge>{POOL_KIND_LABELS.team}</Badge>}</div>
+        <div className="row-sm row-wrap"><span className="xs muted">{deptName(db, p.scope)}</span>{p.kind === 'charity' ? <Badge tone="green">Благотворительность</Badge> : <Badge>{POOL_KIND_LABELS.team}</Badge>}</div>
         <h3>{p.title}</h3>
         <p className="small text-2">{p.description}</p>
         <div className="small"><span className="muted">Цель:</span> {p.goal}</div>
@@ -29,7 +29,6 @@ export function PoolCard({ p, actions }: { p: Pool; actions?: ReactNode }) {
         <div className="mt-4">
           <div className="row between small mb-8"><b className="num">{fmt(raised)} <Coin /></b><span className="muted num">из {fmt(p.target)}</span></div>
           <Progress value={raised / p.target} tone="orange" label={`Собрано ${Math.round((raised / p.target) * 100)}%`} />
-          {p.kind === 'charity' && raised > 0 && <div className="xs mt-4" style={{ color: 'var(--green)' }}>+ {fmt(poolMatch(p))} коинов добавит банк</div>}
         </div>
         <div className="facts">
           <div className="fact"><b>{Math.round((raised / p.target) * 100)}%</b><span>собрано</span></div>
@@ -99,9 +98,9 @@ export default function Pools() {
       <div className="grid g3 pool-how">
         <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Users size={18} /></span><div><b className="small">1. Руководитель создаёт сбор</b><div className="xs muted">Для своего отдела или всего банка: выезд офиса, квиз, кофемашина, подарок коллеге. Идею можно предложить своему руководителю.</div></div></div>
         <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Coins size={18} /></span><div><b className="small">2. Команда докидывает коины</b><div className="xs muted">Любая сумма от 100 коинов. Видно, кто уже участвует и сколько осталось до цели.</div></div></div>
-        <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Heart size={18} /></span><div><b className="small">3. Цель достигнута, банк оплачивает</b><div className="xs muted">Благотворительные сборы банк удваивает. Если сбор отменят, коины вернутся полностью.</div></div></div>
+        <div className="card soft pad-sm row" style={{ alignItems: 'flex-start' }}><span className="op-ic"><Heart size={18} /></span><div><b className="small">3. Цель достигнута, банк оплачивает</b><div className="xs muted">Благотворительные сборы передаются фонду. Если сбор отменят, коины вернутся полностью.</div></div></div>
       </div>
-      {ch.coins > 0 && <div className="alert small row between row-wrap" style={{ background: 'var(--green-soft)' }}><span>Вместе с банком на благотворительность уже направлено <b className="nowrap">{fmt(ch.rub)} ₽</b>, участвовали {ch.donors} {plural(ch.donors, 'сотрудник', 'сотрудника', 'сотрудников')}.</span><Button size="sm" variant="secondary" icon={Heart} onClick={() => navigate('/cabinet/charity')}>Раздел «Благотворительность»</Button></div>}
+      {ch.coins > 0 && <div className="alert small row between row-wrap" style={{ background: 'var(--green-soft)' }}><span>Сотрудники уже направили на благотворительность <b className="nowrap">{fmt(ch.rub)} ₽</b>, участвовали {ch.donors} {plural(ch.donors, 'сотрудник', 'сотрудника', 'сотрудников')}.</span><Button size="sm" variant="secondary" icon={Heart} onClick={() => navigate('/cabinet/charity')}>Раздел «Благотворительность»</Button></div>}
       <div className="row between row-wrap">
         <Seg value={kind} onChange={setKind} ariaLabel="Тип сборов" options={[{ value: 'all', label: 'Все' }, { value: 'team', label: 'Для команды' }, { value: 'charity', label: 'Благотворительность' }]} />
         <Seg value={tab} onChange={setTab} ariaLabel="Фильтр сборов" options={[{ value: 'active', label: 'Активные' }, { value: 'done', label: 'Завершённые' }, { value: 'mine', label: 'С моим участием' }]} />

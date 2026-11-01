@@ -167,8 +167,19 @@ async function migrate(db: DB) {
     const oldCharity = db.pools.filter((p) => p.id === 'pool2' && !p.kind).map((p) => ({ ...p, kind: 'charity' as const }));
     await tryUpsert(oldCharity.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { oldCharity.forEach((p) => { db.pools[db.pools.findIndex((x) => x.id === p.id)] = p; }); });
   }
+  // Без удвоения от банка: обновляем описания пожертвований и сборов
+  const doubled = (t?: string) => !!t && /удва|удво|столько же от банка|банк добавит/i.test(t);
+  if (db.users.some((u) => u.email.endsWith('@mania.demo'))) {
+    const fresh = createSeed(now);
+    const prods = db.products.filter((p) => p.category === 'charity' && doubled(p.description)).map((p) => { const f = fresh.products.find((x) => x.id === p.id); return f ? { ...p, description: f.description, costRub: f.costRub } : p; });
+    const pls = db.pools.filter((p) => doubled(p.description) || doubled(p.goal)).map((p) => { const f = fresh.pools.find((x) => x.id === p.id); return f ? { ...p, description: f.description, goal: f.goal } : p; });
+    await tryUpsert([...prods.map((p) => ({ collection: 'products', id: p.id, data: p })), ...pls.map((p) => ({ collection: 'pools', id: p.id, data: p }))], () => {
+      prods.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; });
+      pls.forEach((p) => { db.pools[db.pools.findIndex((x) => x.id === p.id)] = p; });
+    });
+  }
   // База знаний: новые статьи по всем механикам (пишет только администратор)
-  if (!db.articles.some((a) => a.id === 'kb10')) {
+  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body))) {
     await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
   }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {

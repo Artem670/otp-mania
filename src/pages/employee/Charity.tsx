@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
-import { charityTotals, CHARITY_MATCH, me as selectMe, poolRaised, poolVisibleTo } from '../../data/selectors';
+import { charityTotals, me as selectMe, poolRaised, poolVisibleTo } from '../../data/selectors';
 import type { Pool } from '../../data/types';
 import { fmt, fmtDate, plural } from '../../lib/utils';
 import { Badge, Button, Card, Coin, Empty, PageHeader, PageSkeleton, ProductArt, Seg, useAction, usePageLoading } from '../../components/ui';
 import { HandHeart, Heart, PiggyBank } from '../../components/icons';
 import { PoolCard, SupportModal } from './Pools';
 
-/** Отдельная вкладка благотворительности: сборы для фондов, пожертвование в один клик, мой вклад. Банк удваивает каждый коин. */
+/** Отдельная вкладка благотворительности: сборы для фондов, пожертвование в один клик, мой вклад. */
 export default function Charity() {
   const db = useDB();
   const u = selectMe(db)!;
@@ -31,23 +31,23 @@ export default function Charity() {
   if (loading) return <PageSkeleton />;
   return (
     <div className="stack-24">
-      <PageHeader title="Благотворительность" subtitle="Помогаем фондам вместе: каждый коин сотрудника банк удваивает. Можно поддержать сбор всем банком или пожертвовать сразу." />
+      <PageHeader title="Благотворительность" subtitle="Помогаем фондам вместе: можно поддержать сбор всем банком или пожертвовать сразу." />
 
       <section className="charity-banner" data-testid="charity-hero">
         <div className="charity-copy">
-          <span className="badge" style={{ background: 'var(--orange)', color: 'var(--black)' }}><Heart size={12} /> Банк ×{1 + CHARITY_MATCH}</span>
+          <span className="badge" style={{ background: 'var(--orange)', color: 'var(--black)' }}><Heart size={12} /> Помогаем вместе</span>
           <h2 className="mt-12">Вместе уже направили {fmt(t.rub)} ₽</h2>
-          <p className="mt-8">{fmt(t.coins)} коинов от {t.donors} {plural(t.donors, 'сотрудника', 'сотрудников', 'сотрудников')} и столько же от банка. 1 000 коинов = {fmt(1000 * rate)} ₽ от вас + {fmt(1000 * rate * CHARITY_MATCH)} ₽ от банка.</p>
+          <p className="mt-8">{fmt(t.coins)} коинов от {t.donors} {plural(t.donors, 'сотрудника', 'сотрудников', 'сотрудников')}. 1 000 коинов = {fmt(1000 * rate)} ₽ фонду.</p>
         </div>
         <div className="charity-pools">
-          <div className="charity-pool" style={{ cursor: 'default' }}><span className="xs">Ваш вклад</span><b style={{ fontSize: 26 }}>{fmt(myCoins)} <Coin /></b><span className="xs">≈ {fmt(myCoins * rate * (1 + CHARITY_MATCH))} ₽ вместе с банком</span></div>
+          <div className="charity-pool" style={{ cursor: 'default' }}><span className="xs">Ваш вклад</span><b style={{ fontSize: 26 }}>{fmt(myCoins)} <Coin /></b><span className="xs">≈ {fmt(myCoins * rate)} ₽ фондам</span></div>
           <div className="charity-pool" style={{ cursor: 'default' }}><span className="xs">Активных сборов</span><b style={{ fontSize: 26 }}>{pools.filter((p) => p.status === 'active').length}</b><span className="xs">для фондов, всем банком</span></div>
         </div>
       </section>
 
       {products.length > 0 && (
         <div>
-          <div className="row between mb-12 row-wrap"><h2>Пожертвовать сразу</h2><span className="small muted">Без сбора и корзины, банк удвоит сумму</span></div>
+          <div className="row between mb-12 row-wrap"><h2>Пожертвовать сразу</h2><span className="small muted">Без сбора и корзины, в один клик</span></div>
           <div className="grid g3">
             {products.map((p) => (
               <Card key={p.id} className="pad-0 charity-card">
@@ -56,8 +56,8 @@ export default function Charity() {
                   <b>{p.name}</b>
                   <span className="small text-2">{p.description}</span>
                   <div className="row between row-wrap mt-4">
-                    <span className="small muted">{fmt(p.price)} <Coin /> → {fmt(p.price * rate * (1 + CHARITY_MATCH))} ₽ фонду</span>
-                    <Button size="sm" variant="orange" icon={HandHeart} loading={busy === 'don-' + p.id} disabled={u.coins < p.price} onClick={() => run('don-' + p.id, () => api.donate(p.id), `Спасибо! ${fmt(p.price)} коинов направлены, банк удвоит`)} data-testid={`donate-${p.id}`}>{u.coins < p.price ? 'Не хватает коинов' : `Пожертвовать ${fmt(p.price)}`}</Button>
+                    <span className="small muted">{fmt(p.price)} <Coin /> → {fmt(p.price * rate)} ₽ фонду</span>
+                    <Button size="sm" variant="orange" icon={HandHeart} loading={busy === 'don-' + p.id} disabled={u.coins < p.price} onClick={() => run('don-' + p.id, () => api.donate(p.id), `Спасибо! ${fmt(p.price)} коинов направлены в фонд`)} data-testid={`donate-${p.id}`}>{u.coins < p.price ? 'Не хватает коинов' : `Пожертвовать ${fmt(p.price)}`}</Button>
                   </div>
                 </div>
               </Card>
@@ -81,7 +81,7 @@ export default function Charity() {
         ) : <div className="card"><Empty icon={PiggyBank} title={tab === 'active' ? 'Сейчас нет благотворительных сборов' : 'Завершённых сборов пока нет'} text="Благотворительные сборы создают руководители и HR. Пока можно пожертвовать сразу выше." /></div>}
       </div>
 
-      <Card title="Мои пожертвования" subtitle={myCoins ? `Всего ${fmt(myCoins)} коинов, вместе с банком ≈ ${fmt(myCoins * rate * (1 + CHARITY_MATCH))} ₽` : undefined}>
+      <Card title="Мои пожертвования" subtitle={myCoins ? `Всего ${fmt(myCoins)} коинов, это ≈ ${fmt(myCoins * rate)} ₽ фондам` : undefined}>
         {mine.length ? (
           <div className="col" style={{ gap: 0 }}>
             {mine.slice(0, 12).map((x, i) => (
@@ -91,7 +91,7 @@ export default function Charity() {
               </div>
             ))}
           </div>
-        ) : <Empty icon={Heart} title="Вы ещё не жертвовали" text="Начните с 1 000 коинов: банк добавит столько же." />}
+        ) : <Empty icon={Heart} title="Вы ещё не жертвовали" text="Начните с 1 000 коинов: это 200 ₽ фонду." />}
       </Card>
       {support && <SupportModal p={support} onClose={() => setSupport(null)} />}
     </div>

@@ -264,7 +264,7 @@ export const api = {
     });
     return orderId;
   },
-  /** Пожертвование фонду в один клик (товар категории «Благотворительность»), не трогает корзину. Банк удваивает сумму. */
+  /** Пожертвование фонду в один клик (товар категории «Благотворительность»), не трогает корзину. */
   async donate(productId: string, qty = 1) {
     await wait(400);
     const db = getState();
@@ -280,7 +280,7 @@ export const api = {
       x.coins -= total;
       d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total, status: 'delivered', items: [{ productId: p!.id, name: p!.name, qty, price: p!.price, costRub: p!.costRub }] });
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -total, title: `Пожертвование: ${p!.name}`, refId: orderId });
-      notify(d, x.id, `Спасибо! ${total.toLocaleString('ru-RU')} коинов направлены в фонд, банк удвоит сумму`, '/cabinet/charity');
+      notify(d, x.id, `Спасибо! ${total.toLocaleString('ru-RU')} коинов направлены в фонд`, '/cabinet/charity');
       touch(d, x.id);
     });
     return orderId;

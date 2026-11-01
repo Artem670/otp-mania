@@ -5,7 +5,7 @@ import { useRouter } from '../lib/router';
 import { Button, Progress } from './ui';
 import { HandHeart, Heart } from './icons';
 
-/** Баннер благотворительности на главном экране: сборы фондам и пожертвование в магазине, банк удваивает. */
+/** Баннер благотворительности на главном экране: сборы фондам и пожертвование в магазине. */
 export function CharityBanner() {
   const db = useDB();
   const { navigate } = useRouter();

@@ -42,15 +42,12 @@ export const lastRecognition = (db: DB, userId: string) => {
 };
 
 export const poolRaised = (p: Pool) => sum(p.contributions.map((c) => c.amount));
-/** Сколько добавит банк: благотворительные сборы и пожертвования удваиваются. */
-export const poolMatch = (p: Pool) => (p.kind === 'charity' ? poolRaised(p) : 0);
-export const CHARITY_MATCH = 1; // банк добавляет 100% от суммы сотрудников
 export function charityTotals(db: DB) {
   const fromPools = sum(db.pools.filter((p) => p.kind === 'charity' && p.status !== 'cancelled').map(poolRaised));
   const charityIds = new Set(db.products.filter((p) => p.category === 'charity').map((p) => p.id));
   const fromShop = sum(db.orders.filter((o) => o.status !== 'cancelled').flatMap((o) => o.items.filter((i) => charityIds.has(i.productId)).map((i) => i.price * i.qty)));
   const coins = fromPools + fromShop;
-  const rub = coins * db.settings.coinCostRub * (1 + CHARITY_MATCH);
+  const rub = coins * db.settings.coinCostRub; // только коины сотрудников, без доплаты банка
   const donors = new Set([...db.pools.filter((p) => p.kind === 'charity').flatMap((p) => p.contributions.map((c) => c.userId)), ...db.orders.filter((o) => o.items.some((i) => charityIds.has(i.productId))).map((o) => o.userId)]).size;
   return { coins, rub, donors };
 }
