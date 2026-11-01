@@ -41,11 +41,12 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
   }, [db]);
 
   const add = (p: Product) => run('add-' + p.id, () => api.addToCart(p.id), `«${p.name}» в корзине`);
+  const redeem = (p: Product) => run('ru-' + p.id, () => api.redeemPerk(p.id), `«${p.name}» ваша! Согласуйте дату с руководителем`);
   const open = productId ? db.products.find((p) => p.id === productId) : null;
 
   return (
     <div className="stack-24">
-      <PageHeader title="Магазин" subtitle={<>Ваш баланс: <Amount value={u.coins} />. Электронные сертификаты приходят на почту, физические товары выдаются в офисе.</>}
+      <PageHeader title="Магазин" subtitle={<>Ваш баланс: <Amount value={u.coins} /> и <Amount value={u.rucoins} ru />. Нематериальные награды получают за РуКоины. Электронные сертификаты приходят на почту, физические товары выдаются в офисе.</>}
         actions={<Button variant="secondary" icon={Cart} onClick={() => navigate('/cabinet/cart')}>Корзина{cart.length ? ` · ${cart.reduce((a, l) => a + l.qty, 0)}` : ''}</Button>} />
       <PetShopBanner />
       <div className="row row-wrap between" style={{ gap: 12 }}>
@@ -80,8 +81,10 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
                   <div className="xs muted">{CATEGORY_LABELS[p.category]}</div>
                   <button className="product-name" onClick={() => navigate(`/cabinet/shop/${p.id}`)}>{p.name}</button>
                   <div className="row between mt-4" style={{ marginTop: 'auto' }}>
-                    <Amount value={p.price} />
-                    {locked ? <Badge><Lock size={12} />Питомец ур. {productLevel(p)}</Badge>
+                    <Amount value={p.price} ru={p.currency === 'rucoins'} />
+                    {p.currency === 'rucoins' ? (p.stock === 0 ? <Badge tone="red">Мест нет</Badge>
+                      : <Button size="sm" variant="orange" loading={busy === 'ru-' + p.id} disabled={u.rucoins < p.price} onClick={() => redeem(p)} aria-label={`Получить «${p.name}» за РуКоины`} data-testid={`redeem-${p.id}`}>{u.rucoins < p.price ? 'Не хватает' : 'Получить'}</Button>)
+                      : locked ? <Badge><Lock size={12} />Питомец ур. {productLevel(p)}</Badge>
                       : p.stock === 0 ? <Badge tone="red">Нет в наличии</Badge>
                       : <Button size="sm" variant={inCart ? 'soft' : 'primary'} icon={inCart ? Check : Plus} loading={busy === 'add-' + p.id} onClick={() => add(p)} aria-label={`Добавить «${p.name}» в корзину`}>{inCart ? `${inCart} в корзине` : 'В корзину'}</Button>}
                   </div>
@@ -107,6 +110,7 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
   const { run, busy } = useAction();
   const locked = isLocked(p, u.pet.xp);
   const sold = db.orders.reduce((a, o) => a + o.items.filter((i) => i.productId === p.id).reduce((x, i) => x + i.qty, 0), 0);
+  const ru = p.currency === 'rucoins';
   const enough = u.coins >= p.price * qty;
   const add = async (thenCart: boolean) => {
     const ok = await run('m-add', () => api.addToCart(p.id, qty).then(() => true), `«${p.name}» × ${qty} в корзине`);
@@ -119,9 +123,15 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
         <div className="col" style={{ gap: 14 }}>
           <div className="row-sm row-wrap"><Badge>{CATEGORY_LABELS[p.category]}</Badge>{sold > 0 && <Badge tone="orange">Купили {sold} раз</Badge>}</div>
           <p className="text-2">{p.description}</p>
-          <div className="price" style={{ fontSize: 28 }}>{fmt(p.price)} <Coin /></div>
+          <div className="price" style={{ fontSize: 28 }}>{fmt(p.price)} <Coin ru={ru} /></div>
           <div className="small muted">{p.stock > 100 ? 'В наличии' : `На складе: ${p.stock} шт.`}</div>
-          {locked ? (
+          {ru ? (
+            <>
+              <div className="alert info small">Нематериальная награда за РуКоины: банку она ничего не стоит, а сотруднику даёт время. После получения согласуйте дату с руководителем.</div>
+              {u.rucoins < p.price && <div className="alert warn small">На балансе {fmt(u.rucoins)} РуКоинов, не хватает {fmt(p.price - u.rucoins)}.</div>}
+              <div><Button variant="orange" loading={busy === 'm-ru'} disabled={u.rucoins < p.price || p.stock === 0} onClick={async () => { const ok = await run('m-ru', () => api.redeemPerk(p.id).then(() => true), `«${p.name}» ваша! Согласуйте дату с руководителем`); if (ok) onClose(); }}>Получить за {fmt(p.price)} РуКоинов</Button></div>
+            </>
+          ) : locked ? (
             <div className="alert info small"><Lock size={16} /><span className="grow">Откроется на {productLevel(p)} уровне питомца ({PET_LEVELS[productLevel(p) - 1].title}). Сейчас у вас {petLevel(u.pet.xp)} уровень.</span><Button size="sm" variant="secondary" onClick={() => navigate('/cabinet/pet')}>К питомцу</Button></div>
           ) : p.stock === 0 ? <div className="alert err small">Товар закончился</div> : (
             <>

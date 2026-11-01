@@ -138,8 +138,12 @@ export const PRODUCTS: Product[] = [
   { id: 'p-don-mayak', name: 'Пожертвование «Дому с маяком»', category: 'charity', price: 1000, costRub: 400, stock: 9999, active: true, description: 'Детский хоспис «Дом с маяком». 1 000 коинов = 200 ₽ от вас, банк добавит ещё 200 ₽. Перечисляем фонду раз в месяц.', icon: 'heart', tone: '#2f9e6a' },
   { id: 'p-don-bereginya', name: 'Пожертвование фонду «Берегиня»', category: 'charity', price: 1000, costRub: 400, stock: 9999, active: true, description: 'Благотворительный фонд «Берегиня». 1 000 коинов = 200 ₽ от вас, банк удвоит сумму. Перечисляем фонду раз в месяц.', icon: 'heart', tone: '#9e6fc3' },
   { id: 'p-don-shelter', name: 'Корм для приюта', category: 'charity', price: 1000, costRub: 400, stock: 9999, active: true, description: 'Покупаем корм для приюта для собак. Банк удваивает каждое пожертвование.', icon: 'paw', tone: '#ff6a13' },
-  { id: 'p-dayoff', name: 'Дополнительный выходной', category: 'experiences', price: 12000, costRub: 0, stock: 999, active: true, description: 'Согласуется с руководителем. Не чаще раза в квартал.', icon: 'palm', tone: '#6E9E00' },
-  { id: 'p-lunch', limited: true, name: 'Обед с членом правления', category: 'experiences', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
+  // Нематериальные награды за РуКоины: из правил программы в кейсе (выходной, поздний приход, удалёнка) и наши (обед с правлением, наставничество)
+  { id: 'p-dayoff', name: 'Дополнительный выходной', category: 'perks', currency: 'rucoins', price: 12000, costRub: 0, stock: 999, active: true, description: 'Согласуется с руководителем. Не чаще раза в квартал.', icon: 'palm', tone: '#6E9E00' },
+  { id: 'p-late', name: 'Поздний приход или ранний уход', category: 'perks', currency: 'rucoins', price: 3000, costRub: 0, stock: 999, active: true, description: 'Приходите на два часа позже или уходите на два часа раньше в удобный день. Достаточно предупредить руководителя.', icon: 'clock', tone: '#9E6FC3' },
+  { id: 'p-remote', name: 'Дополнительный день удалённой работы', category: 'perks', currency: 'rucoins', price: 4000, costRub: 0, stock: 999, active: true, description: 'Ещё один день из дома сверх графика. Дату согласуйте с руководителем.', icon: 'home', tone: '#FF6A13' },
+  { id: 'p-lunch', limited: true, name: 'Обед с членом правления', category: 'perks', currency: 'rucoins', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
+  { id: 'p-mentor', name: 'Встреча с наставником из другой функции', category: 'perks', currency: 'rucoins', price: 8000, costRub: 0, stock: 999, active: true, description: 'Час с опытным руководителем другого направления: карьера, проект, обратная связь.', icon: 'mentor', tone: '#3A3A42' },
   { id: 'p-masterclass', name: 'Мастер-класс по выбору', category: 'experiences', price: 7000, costRub: 1200, stock: 30, active: true, description: 'Гончарный, кулинарный или фото.', icon: 'sparkles', tone: '#FF6A13' },
   { id: 'p-ski', limited: true, name: 'Выезд на горнолыжку с командой', category: 'experiences', price: 80000, costRub: 15000, stock: 6, active: true, description: 'Выходные на курорте для команды до 6 человек.', icon: 'mountain', tone: '#3A3A42' },
 ];
@@ -305,6 +309,16 @@ export function createSeed(now = Date.now()): DB {
     touch(u, ts);
   };
 
+  const redeemPerk = (u: User, ts: number, p: Product) => {
+    const age = (now - ts) / DAY;
+    const o: Order = { id: id('or'), ts, userId: u.id, items: [{ productId: p.id, name: p.name, qty: 1, price: p.price, costRub: 0 }], total: p.price, status: age > 10 ? 'delivered' : 'processing', currency: 'rucoins' };
+    if (o.status === 'delivered') o.csi = r() < 0.85 ? 5 : 4;
+    orders.push(o);
+    u.rucoins -= p.price; p.stock -= 1;
+    txs.push({ id: id('tx'), ts, userId: u.id, kind: 'order', currency: 'rucoins', amount: -p.price, title: `Награда: ${p.name}`, refId: o.id });
+    touch(u, ts);
+  };
+
   const feedPet = (u: User, ts: number, cost: number, xp: number) => {
     if (u.coins < cost) return;
     u.coins -= cost; u.pet.xp += xp; u.pet.fedAt = ts;
@@ -375,8 +389,12 @@ export function createSeed(now = Date.now()): DB {
       if (inactive.has(u.id)) continue;
       if (u.rucoins > 0 && r() < 0.06) convert(u, ts(), u.rucoins >= 2000 && r() < 0.5 ? round100(u.rucoins * (0.5 + r() * 0.5)) : u.rucoins);
       if (u.coins > 2000 && r() < 0.035) {
-        const affordable = products.filter((x) => x.price <= u.coins && x.stock > 0 && isUnlocked(x, u.pet.xp));
+        const affordable = products.filter((x) => x.currency !== 'rucoins' && x.price <= u.coins && x.stock > 0 && isUnlocked(x, u.pet.xp));
         if (affordable.length) buy(u, ts(), pick(r, affordable));
+      }
+      if (u.rucoins >= 3000 && r() < 0.012) {
+        const perks = products.filter((x) => x.currency === 'rucoins' && x.price <= u.rucoins && x.stock > 0);
+        if (perks.length) redeemPerk(u, ts(), pick(r, perks));
       }
       if (u.coins > 600 && r() < 0.02) feedPet(u, ts(), pick(r, [500, 1500, 3000]), 0);
       if (u.coins > 3000 && r() < 0.025) {

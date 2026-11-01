@@ -89,7 +89,8 @@ export type ProductCategory =
   | 'certificates'
   | 'merch'
   | 'experiences'
-  | 'charity';
+  | 'charity'
+  | 'perks';
 
 export interface Product {
   id: string;
@@ -103,6 +104,7 @@ export interface Product {
   icon: string;
   tone: string;
   minLevel?: number; // уровень питомца, с которого товар доступен; если не задан, берётся по категории
+  currency?: Currency; // за что продаётся: коины (по умолчанию) или РуКоины (нематериальные награды)
   limited?: boolean; // уникальная или лимитированная позиция (метрика C4)
   stockouts?: { from: number; to?: number }[]; // периоды, когда товара не было в наличии (метрика C3)
 }
@@ -126,6 +128,7 @@ export interface Order {
   status: OrderStatus;
   csi?: number;
   wheel?: boolean; // приз из колеса удачи
+  currency?: Currency; // списанная валюта, по умолчанию коины
 }
 
 export interface PoolContribution {
@@ -299,6 +302,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   merch: 'Мерч компании',
   experiences: 'Впечатления',
   charity: 'Благотворительность',
+  perks: 'За РуКоины',
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

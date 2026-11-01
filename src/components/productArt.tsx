@@ -277,6 +277,43 @@ const ART: Record<string, (tone: string) => ReactNode> = {
       <path d="M160 140 q10 -4 12 -12 M170 150 q10 -4 12 -12" stroke={INK} strokeWidth="5" strokeLinecap="round" fill="none" />
     </g>
   ),
+  'p-late': (t) => (
+    <g>
+      <circle cx="100" cy="104" r="64" fill={INK} opacity=".15" transform="translate(5 6)" />
+      <circle cx="100" cy="104" r="64" fill={t} />
+      <circle cx="100" cy="104" r="52" fill="#fff" />
+      {Array.from({ length: 12 }).map((_, i) => <rect key={i} x="98" y="56" width="4" height={i % 3 ? 6 : 10} rx="2" fill={INK} transform={`rotate(${i * 30} 100 104)`} />)}
+      <path d="M100 104 V72" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      <path d="M100 104 L124 116" stroke={INK} strokeWidth="5" strokeLinecap="round" />
+      <path d="M100 104 A40 40 0 0 1 138 92" stroke={LIME} strokeWidth="10" fill="none" strokeLinecap="round" opacity=".9" />
+      <circle cx="100" cy="104" r="6" fill={LIME} stroke={INK} strokeWidth="2" />
+      <path d="M150 44 l10 -10 M160 54 l14 -4 M140 38 l2 -14" stroke={t} strokeWidth="5" strokeLinecap="round" />
+    </g>
+  ),
+  'p-remote': (t) => (
+    <g>
+      <path d="M36 92 L100 42 L164 92 V168 H36 Z" fill={CREAM} />
+      <path d="M26 96 L100 36 L174 96" stroke={t} strokeWidth="12" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="132" y="48" width="16" height="30" rx="3" fill={t} />
+      <rect x="56" y="104" width="88" height="54" rx="6" fill={INK} />
+      <rect x="62" y="110" width="76" height="42" rx="3" fill="#2a2a31" />
+      <Mark x={100} y={131} r={9} />
+      <path d="M44 158 H156 L150 168 H50 Z" fill="#3a3a42" />
+      <path d="M152 140 h14 q0 16 -7 16 q-7 0 -7 -16 z" fill="#fff" stroke={INK} strokeWidth="2" />
+      <path d="M156 132 q3 -5 0 -9 M161 132 q3 -5 0 -9" stroke="#bbb" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </g>
+  ),
+  'p-mentor': (t) => (
+    <g>
+      <rect x="28" y="44" width="96" height="62" rx="18" fill={t} />
+      <path d="M50 104 L44 126 L72 106 Z" fill={t} />
+      <path d="M48 66 H104 M48 82 H90" stroke="#fff" strokeWidth="6" strokeLinecap="round" opacity=".85" />
+      <rect x="80" y="96" width="94" height="58" rx="18" fill={LIME} />
+      <path d="M150 152 L158 172 L130 154 Z" fill={LIME} />
+      <path d="M100 118 H154 M100 132 H138" stroke={INK} strokeWidth="6" strokeLinecap="round" opacity=".75" />
+      <circle cx="170" cy="56" r="12" fill="#9e6fc3" /><path d="M164 56 l4 4 l8 -8" stroke="#fff" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </g>
+  ),
   'p-don-mayak': () => (
     <g>
       <circle cx="100" cy="102" r="70" fill="#fff" opacity=".5" />
@@ -316,7 +353,7 @@ const BY_ICON: Record<string, string> = {
   shirt: 'p-tee', snowflake: 'p-beanie', coffee: 'p-mug', backpack: 'p-backpack', umbrella: 'p-umbrella', shoppingbag: 'p-shopper',
   headphones: 'p-headphones', battery: 'p-powerbank', speaker: 'p-speaker', watch: 'p-watch', gift: 'p-cert-mp', dumbbell: 'p-cert-sport',
   book: 'p-cert-books', film: 'p-cert-cinema', sticker: 'p-stickers', notebook: 'p-notebook', paw: 'p-pet', heart: 'p-don-bereginya',
-  palm: 'p-dayoff', utensils: 'p-lunch', sparkles: 'p-masterclass', mountain: 'p-ski',
+  palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-masterclass', mountain: 'p-ski',
 };
 
 export function ProductIllustration({ id, icon, tone }: { id?: string; icon: string; tone: string }) {

@@ -204,6 +204,7 @@ export const api = {
     const u = requireUser(db);
     const p = db.products.find((x) => x.id === productId);
     if (!p || !p.active) fail('Товар недоступен');
+    if (p!.currency === 'rucoins') fail('Эта награда за РуКоины: нажмите «Получить за РуКоины»');
     if (!isUnlocked(p!, u.pet.xp)) fail(`«${p!.name}» откроется на ${productLevel(p!)} уровне питомца (${PET_LEVELS[productLevel(p!) - 1].title})`);
     const cur = (db.carts[u.id] ?? []).find((l) => l.productId === productId)?.qty ?? 0;
     if (cur + qty > p!.stock) fail(`На складе осталось ${p!.stock} шт.`);
@@ -230,6 +231,7 @@ export const api = {
     const cart = cartDetailed(db, u.id);
     if (!cart.lines.length) fail('Корзина пуста');
     for (const l of cart.lines) {
+      if (l.product.currency === 'rucoins') fail(`«${l.product.name}» получают за РуКоины. Уберите её из корзины`);
       if (!l.product.active) fail(`«${l.product.name}» больше не продаётся. Уберите его из корзины`);
       if (l.qty > l.product.stock) fail(`«${l.product.name}»: на складе ${l.product.stock} шт.`);
       if (!isUnlocked(l.product, u.pet.xp)) fail(`«${l.product.name}» откроется на ${productLevel(l.product)} уровне питомца`);
@@ -244,6 +246,29 @@ export const api = {
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -cart.total, title: `Заказ из ${cart.count} поз.`, refId: orderId });
       d.carts[x.id] = [];
       notify(d, x.id, `Заказ оформлен: ${cart.total.toLocaleString('ru-RU')} коинов. Статус можно отслеживать в разделе «Заказы»`, '/cabinet/orders');
+      touch(d, x.id);
+    });
+    return orderId;
+  },
+  /** Нематериальная награда за РуКоины: списывает РуКоины, создаёт заказ, руководитель получает уведомление для согласования. */
+  async redeemPerk(productId: string) {
+    await wait(400);
+    const db = getState();
+    const u = requireUser(db);
+    const p = db.products.find((x) => x.id === productId);
+    if (!p || !p.active || p.currency !== 'rucoins') fail('Награда недоступна');
+    if (p!.stock < 1) fail('Места на этот квартал закончились');
+    if (u.rucoins < p!.price) fail(`Недостаточно РуКоинов: нужно ${p!.price.toLocaleString('ru-RU')}, на балансе ${u.rucoins.toLocaleString('ru-RU')}`);
+    const orderId = uid('or');
+    await commit((d) => {
+      const x = requireUser(d);
+      const prod = d.products.find((y) => y.id === productId)!;
+      x.rucoins -= prod.price; prod.stock -= 1; trackStock(prod);
+      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: prod.price, status: 'new', currency: 'rucoins', items: [{ productId: prod.id, name: prod.name, qty: 1, price: prod.price, costRub: prod.costRub }] });
+      d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'rucoins', amount: -prod.price, title: `Награда: ${prod.name}`, refId: orderId });
+      notify(d, x.id, `Вы получили «${prod.name}» за ${prod.price.toLocaleString('ru-RU')} РуКоинов. Согласуйте дату с руководителем`, '/cabinet/orders');
+      const mgr = d.departments.find((dep) => dep.id === x.deptId)?.managerId;
+      if (mgr && mgr !== x.id) notify(d, mgr, `${x.name} выбрал(а) награду «${prod.name}». Согласуйте дату`, '/cabinet/orders');
       touch(d, x.id);
     });
     return orderId;
@@ -568,10 +593,11 @@ export const api = {
       x.status = status;
       if (status === 'cancelled') {
         const u = d.users.find((y) => y.id === x.userId)!;
-        u.coins += x.total;
+        const ru = x.currency === 'rucoins';
+        if (ru) u.rucoins += x.total; else u.coins += x.total;
         x.items.forEach((i) => { const p = d.products.find((y) => y.id === i.productId); if (p) { p.stock += i.qty; trackStock(p); } });
-        d.txs.push({ id: uid('tx'), ts: Date.now(), userId: u.id, kind: 'refund', currency: 'coins', amount: x.total, title: 'Возврат за отменённый заказ', refId: x.id });
-        notify(d, u.id, `Заказ отменён, ${x.total.toLocaleString('ru-RU')} коинов вернулись на баланс`, '/cabinet/orders');
+        d.txs.push({ id: uid('tx'), ts: Date.now(), userId: u.id, kind: 'refund', currency: ru ? 'rucoins' : 'coins', amount: x.total, title: 'Возврат за отменённый заказ', refId: x.id });
+        notify(d, u.id, `Заказ отменён, ${x.total.toLocaleString('ru-RU')} ${ru ? 'РуКоинов' : 'коинов'} вернулись на баланс`, '/cabinet/orders');
       } else notify(d, x.userId, `Статус заказа: ${status === 'processing' ? 'собирается' : status === 'delivered' ? 'выдан, оцените его' : 'новый'}`, '/cabinet/orders');
     });
   },

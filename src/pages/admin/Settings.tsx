@@ -244,7 +244,10 @@ function ProductsTab() {
           <div className="grid g2" style={{ gap: 16 }}>
             <div className="col" style={{ gap: 12 }}>
               <Field label="Название"><input className="input" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-              <Field label="Категория"><select className="select" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value as ProductCategory })}>{Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+              <div className="grid g2" style={{ gap: 8 }}>
+                <Field label="Категория"><select className="select" value={edit.category} onChange={(e) => { const c = e.target.value as ProductCategory; setEdit({ ...edit, category: c, currency: c === 'perks' ? 'rucoins' : edit.currency }); }}>{Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <Field label="Продаётся за"><select className="select" value={edit.currency ?? 'coins'} onChange={(e) => setEdit({ ...edit, currency: e.target.value as 'coins' | 'rucoins' })}><option value="coins">Коины</option><option value="rucoins">РуКоины</option></select></Field>
+              </div>
               <div className="grid g3" style={{ gap: 8 }}>
                 <NumField label="Цена" value={edit.price} step={100} onChange={(v) => setEdit({ ...edit, price: v })} />
                 <NumField label="Себест., ₽" value={edit.costRub} step={50} onChange={(v) => setEdit({ ...edit, costRub: v })} />
@@ -293,7 +296,7 @@ function OrdersTab() {
                   <td className="small muted nowrap">{fmtDateTime(o.ts)}</td>
                   <td>{u && <div className="row-sm"><Avatar user={u} size={24} /><span className="small">{u.name}</span></div>}</td>
                   <td className="small" style={{ maxWidth: 280 }}>{o.items.map((i) => `${i.name} × ${i.qty}`).join(', ')}</td>
-                  <td className="right num">{fmt(o.total)}</td>
+                  <td className="right num">{fmt(o.total)}{o.currency === 'rucoins' ? ' РуК' : ''}</td>
                   <td><Badge tone={STATUS_TONE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge></td>
                   <td className="nowrap">
                     {o.status === 'new' && <Button size="sm" variant="secondary" loading={busy === o.id} onClick={() => run(o.id, () => api.setOrderStatus(o.id, 'processing'), 'Заказ передан в сборку')}>В сборку</Button>}

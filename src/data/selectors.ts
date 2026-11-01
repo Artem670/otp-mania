@@ -358,7 +358,7 @@ export const PET_LEVELS = [
   { xp: 20000, title: 'Легенда', perk: 'Сертификаты' },
 ];
 export const petLevel = (xp: number) => PET_LEVELS.reduce((l, L, i) => (xp >= L.xp ? i + 1 : l), 1);
-export const CATEGORY_LEVEL: Record<ProductCategory, number> = { charity: 1, merch: 1, accessories: 2, clothes: 3, electronics: 4, experiences: 5, certificates: 6 };
+export const CATEGORY_LEVEL: Record<ProductCategory, number> = { perks: 1, charity: 1, merch: 1, accessories: 2, clothes: 3, electronics: 4, experiences: 5, certificates: 6 };
 export const productLevel = (p: Pick<Product, 'category' | 'minLevel'>) => p.minLevel ?? CATEGORY_LEVEL[p.category];
 export const isUnlocked = (p: Pick<Product, 'category' | 'minLevel'>, xp: number) => petLevel(xp) >= productLevel(p);
 

@@ -18,7 +18,7 @@ export default function Orders() {
   const [f, setF] = useState<'all' | 'active' | 'done'>('all');
   const { run } = useAction();
   const list = useMemo(() => db.orders.filter((o) => o.userId === u.id && (f === 'all' || (f === 'active' ? o.status === 'new' || o.status === 'processing' : o.status === 'delivered' || o.status === 'cancelled'))).sort((a, b) => b.ts - a.ts), [db, u.id, f]);
-  const spent = db.orders.filter((o) => o.userId === u.id && o.status !== 'cancelled').reduce((a, o) => a + o.total, 0);
+  const spent = db.orders.filter((o) => o.userId === u.id && o.status !== 'cancelled' && o.currency !== 'rucoins').reduce((a, o) => a + o.total, 0);
   if (loading) return <PageSkeleton />;
   return (
     <div className="stack-24">
@@ -26,8 +26,8 @@ export default function Orders() {
       {list.length ? list.map((o) => (
         <Card key={o.id}>
           <div className="row between row-wrap">
-            <div className="row-sm"><Package size={18} /><b>{o.wheel ? 'Приз из колеса удачи' : 'Заказ'} от {fmtDateTime(o.ts)}</b></div>
-            <div className="row-sm"><Badge tone={STATUS_TONE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge><Amount value={o.total} /></div>
+            <div className="row-sm"><Package size={18} /><b>{o.wheel ? 'Приз из колеса удачи' : o.currency === 'rucoins' ? 'Награда за РуКоины' : 'Заказ'} от {fmtDateTime(o.ts)}</b></div>
+            <div className="row-sm"><Badge tone={STATUS_TONE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge><Amount value={o.total} ru={o.currency === 'rucoins'} /></div>
           </div>
           <div className="mt-12">{o.items.map((i) => <div key={i.productId} className="row between small" style={{ padding: '6px 0' }}><span>{i.name} × {i.qty}</span><span className="num muted">{fmt(i.price * i.qty)}</span></div>)}</div>
           {o.status === 'delivered' && (

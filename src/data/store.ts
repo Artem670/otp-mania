@@ -142,8 +142,11 @@ async function migrate(db: DB) {
   // Благотворительность и командные сборы (версия 8)
   if (db.users.some((u) => u.email.endsWith('@mania.demo'))) {
     const fresh = createSeed(now);
-    const newProducts = fresh.products.filter((p) => !db.products.some((x) => x.id === p.id) && p.category === 'charity');
+    const newProducts = fresh.products.filter((p) => !db.products.some((x) => x.id === p.id) && (p.category === 'charity' || p.currency === 'rucoins'));
     await tryUpsert(newProducts.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { db.products.push(...newProducts); });
+    // выходной и обед с правлением переезжают на витрину «За РуКоины», остаток сохраняем
+    const moved = fresh.products.filter((p) => p.currency === 'rucoins').flatMap((p) => { const cur = db.products.find((x) => x.id === p.id); return cur && cur.currency !== 'rucoins' ? [{ ...p, stock: cur.stock, stockouts: cur.stockouts }] : []; });
+    await tryUpsert(moved.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { moved.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });
     const byU = new Set(db.users.map((u) => u.id));
     const newPools = fresh.pools.filter((p) => !db.pools.some((x) => x.id === p.id) && byU.has(p.organizerId)).map((p) => ({ ...p, contributions: [] })); // вклады в живой базе только настоящие
     await tryUpsert(newPools.map((p) => ({ collection: 'pools', id: p.id, data: p })), () => { db.pools.push(...newPools); });
