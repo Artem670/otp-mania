@@ -6,7 +6,7 @@ import { Button, Field, PasswordInput, ThemeToggle, useAction, useToast } from '
 import { ApiError } from '../data/errors';
 import { Briefcase, Mail, ShieldAlert, UserIcon, ArrowRight, Alert, CircleCheck } from '../components/icons';
 import { useRouter } from '../lib/router';
-import { OtpLogo } from '../components/brand';
+import { OtpLogo, TeamLogo } from '../components/brand';
 
 const ROLES: { role: Role; title: string; text: string; icon: typeof UserIcon }[] = [
   { role: 'employee', title: 'Сотрудник', text: 'Алексей Смирнов, аналитик продаж', icon: UserIcon },
@@ -83,7 +83,10 @@ export default function Login() {
           <h1>Признание за дело, а не за клик</h1>
           <p className="muted mt-16" style={{ maxWidth: 420, fontSize: 15 }}>Руководители отмечают вклад РуКоинами, коллеги говорят спасибо, а коины превращаются в мерч, сертификаты и впечатления.</p>
         </div>
-        <p className="xs muted" style={{ position: 'relative' }}>Прототип команды для кейс-чемпионата. Все люди и данные вымышлены.</p>
+        <div className="login-credit" style={{ position: 'relative' }}>
+          <TeamLogo height={30} on="dark" />
+          <p className="xs muted mt-8">Прототип команды «Нетворкинг» для кейс-чемпионата ОТП Банка. Все люди и данные вымышлены.</p>
+        </div>
       </div>
       <div className="login-form" style={{ position: 'relative' }}>
         <ThemeToggle className="login-theme" />

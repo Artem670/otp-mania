@@ -5,7 +5,7 @@ import { me as selectMe } from './data/selectors';
 import type { Role } from './data/types';
 import { match, useRouter } from './lib/router';
 import { AppLayout } from './components/layout';
-import { OtpLogo } from './components/brand';
+import { OtpLogo, TeamCredit } from './components/brand';
 import { Button, Empty, Field, Modal, PageSkeleton, PasswordInput, Skeleton, useAction, useToast } from './components/ui';
 import { Alert, Lock } from './components/icons';
 import Login from './pages/Login';
@@ -115,6 +115,7 @@ export default function App() {
         <div className="col">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} h={38} />)}</div>
         <PageSkeleton />
       </div>
+      <div style={{ position: 'fixed', left: 24, bottom: 18 }}><TeamCredit /></div>
     </div>
   );
   if (state === 'error') return <div className="main"><Empty icon={Alert} title="Не удалось загрузить портал" text="Проверьте подключение и попробуйте снова." action={<Button onClick={load}>Повторить</Button>} /></div>;

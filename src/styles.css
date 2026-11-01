@@ -559,3 +559,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .popover .menu-item.cart-item { display: flex; }
 }
 .menu-item.cart-item { display: none; }
+
+/* Логотип команды «Нетворкинг» */
+.team-logo { display: inline-flex; align-items: center; flex: none; }
+.team-logo img { display: block; width: auto; }
+.tl-d { display: none !important; }
+[data-theme="dark"] .tl-l { display: none !important; }
+[data-theme="dark"] .tl-d { display: block !important; }
+.team-credit { display: inline-flex; align-items: center; gap: 10px; }
+.sidebar-credit { margin-top: 18px; padding: 4px 14px 0; }

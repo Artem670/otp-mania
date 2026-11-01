@@ -7,7 +7,7 @@ import { ROLE_LABELS } from '../data/types';
 import { useRouter } from '../lib/router';
 import { ago, cx, fmt } from '../lib/utils';
 import { Avatar, Coin, ThemeToggle, useAction } from './ui';
-import { OtpLogo } from './brand';
+import { OtpLogo, TeamCredit } from './brand';
 import { toggleTheme, useTheme } from '../lib/theme';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
@@ -96,6 +96,7 @@ function Sidebar({ me, open, onNavigate }: { me: User; open: boolean; onNavigate
         <div className="xs muted mt-4">{me.role === 'employee' ? 'Доступен кабинет сотрудника' : me.role === 'manager' ? 'Кабинет сотрудника + инструменты руководителя' : 'Кабинет сотрудника + администрирование'}</div>
         <div className="mt-8"><span className={api.mode() === 'live' ? 'badge green' : 'badge'}>{api.mode() === 'live' ? 'Рабочая база' : 'Демо-песочница'}</span></div>
       </div>
+      <div className="sidebar-credit"><TeamCredit /></div>
     </nav>
   );
 }
