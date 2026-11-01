@@ -1,6 +1,6 @@
 // Иконки Lucide (через пакет react-icons/lu).
 export {
-  LuSearch as Search, LuBell as Bell, LuShoppingCart as Cart, LuNewspaper as News, LuCalendarDays as Calendar,
+  LuSun as Sun, LuMoon as Moon, LuSearch as Search, LuBell as Bell, LuShoppingCart as Cart, LuNewspaper as News, LuCalendarDays as Calendar,
   LuUser as UserIcon, LuUsers as Users, LuBriefcase as Briefcase, LuTarget as Target, LuBookOpen as BookOpen,
   LuLayoutDashboard as Dashboard, LuShieldAlert as ShieldAlert, LuSettings as Settings, LuLogOut as LogOut,
   LuArrowLeftRight as Convert, LuHeart as Heart, LuHandHeart as HandHeart, LuTrophy as Trophy, LuStore as Store,

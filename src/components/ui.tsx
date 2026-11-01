@@ -1,4 +1,6 @@
 import { ProductIllustration } from './productArt';
+import { toggleTheme, useTheme } from '../lib/theme';
+import { Sun, Moon } from './icons';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type ButtonHTMLAttributes } from 'react';
 import { cx, initials, fmt } from '../lib/utils';
 import { Alert, CircleCheck, Info, Loader, X, Coins as CoinsIcon } from './icons';
@@ -153,7 +155,20 @@ export function Avatar({ user, size = 36 }: { user: Pick<User, 'name' | 'color' 
   );
 }
 
-export const Coin = ({ ru }: { ru?: boolean }) => <i className={cx('coin', ru && 'ru')} aria-hidden="true" />;
+/** Значки валют: коин — лаймовый с искрой (за активность), РуКоин — фиолетовый с сердцем (признание руководителя). */
+export const Coin = ({ ru, size }: { ru?: boolean; size?: number }) => (
+  <svg className={cx('coin', ru && 'ru')} viewBox="0 0 100 100" aria-hidden="true" style={size ? { width: size, height: size } : undefined}>
+    {ru ? <>
+      <circle cx="50" cy="50" r="48" fill="#6f3fa0" />
+      <circle cx="50" cy="50" r="41" fill="none" stroke="#fff" strokeOpacity=".28" strokeWidth="3" />
+      <path d="M50 80 C16 58 18 30 35 27 C44 25.5 48.5 31 50 37 C51.5 31 56 25.5 65 27 C82 30 84 58 50 80 Z" fill="#fff" />
+    </> : <>
+      <circle cx="50" cy="50" r="48" fill="#c1ff05" />
+      <circle cx="50" cy="50" r="41" fill="none" stroke="#16161a" strokeOpacity=".14" strokeWidth="3" />
+      <path d="M50 16 C54 40 60 46 84 50 C60 54 54 60 50 84 C46 60 40 54 16 50 C40 46 46 40 50 16 Z" fill="#16161a" />
+    </>}
+  </svg>
+);
 export const Amount = ({ value, ru, className }: { value: number; ru?: boolean; className?: string }) => (
   <span className={cx('price num', className)}>{fmt(value)} <Coin ru={ru} /><span className="sr-only">{ru ? 'РуКоинов' : 'коинов'}</span></span>
 );
@@ -233,6 +248,16 @@ export function Confirm({ open, title, text, confirmText, danger, loading, onCon
     <Modal open={open} onClose={onClose} title={title} footer={<><Button variant="secondary" onClick={onClose}>Отмена</Button><Button variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmText}</Button></>}>
       <div className="text-2">{text}</div>
     </Modal>
+  );
+}
+
+/** Кнопка смены темы: светлая ↔ тёмная. */
+export function ThemeToggle({ className }: { className?: string }) {
+  const t = useTheme();
+  return (
+    <button type="button" className={cx('icon-btn theme-toggle', className)} onClick={toggleTheme} aria-label={t === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} title={t === 'dark' ? 'Светлая тема' : 'Тёмная тема'} data-testid="theme-toggle">
+      {t === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
   );
 }
 

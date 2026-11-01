@@ -106,7 +106,7 @@ export default function Profile() {
       <div className="card hero-profile">
         <label style={{ position: 'relative', cursor: 'pointer' }} title="Загрузить фото">
           <Avatar user={u} size={84} />
-          <span style={{ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: '50%', background: '#fff', border: '1px solid var(--border)', display: 'grid', placeItems: 'center' }}><Upload size={14} /></span>
+          <span style={{ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)', display: 'grid', placeItems: 'center' }}><Upload size={14} /></span>
           <input type="file" accept="image/*" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} aria-label="Загрузить фото профиля" />
         </label>
         <div>

@@ -37,6 +37,7 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ОТП Мания</title>
 <link rel="icon" type="image/png" href="${favicon}">
+<script>try{var t=localStorage.getItem('otp-mania-theme');document.documentElement.dataset.theme=t==='dark'||t==='light'?t:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
 <style>${fontFace}${css}</style>
 </head>
 <body>

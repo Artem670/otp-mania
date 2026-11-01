@@ -49,7 +49,7 @@ export function LineChart({ labels, series, height = 220, format = fmt, area = t
         {hover !== null && (
           <g>
             <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="#d9d9df" strokeDasharray="3 3" />
-            {series.map((s) => <circle key={s.name} cx={x(hover)} cy={y(s.data[hover])} r={4.5} fill="#fff" stroke={s.color} strokeWidth={2} />)}
+            {series.map((s) => <circle key={s.name} cx={x(hover)} cy={y(s.data[hover])} r={4.5} fill="var(--card)" stroke={s.color} strokeWidth={2} />)}
           </g>
         )}
       </svg>
@@ -110,7 +110,7 @@ export function Donut({ data, size = 170, center, format = fmt }: { data: { labe
   let a0 = -Math.PI / 2;
   const [hover, setHover] = useState<number | null>(null);
   return (
-    <div className="row row-wrap" style={{ gap: 20 }}>
+    <div className="row row-wrap donut" style={{ gap: 20 }}>
       <div style={{ width: size, position: 'relative' }}>
         <svg viewBox="-80 -80 160 160" role="img" aria-label="Кольцевая диаграмма">
           {data.map((d, i) => {

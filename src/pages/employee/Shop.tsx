@@ -169,7 +169,7 @@ function PetShopBanner() {
         <div className="small strong">Питомец {u.pet.name}: уровень {lvl} из {PET_LEVELS.length}</div>
         <div className="xs text-2 mt-4">Открыто: {PET_LEVELS.slice(0, lvl).map((L) => L.perk.split(':')[0].toLowerCase()).join(', ')}.</div>
         {next && <div className="xs text-2 mt-4">Следующий уровень откроет: <b>{next.perk.toLowerCase()}</b>. Нужно ещё {fmt(next.xp - u.pet.xp)} опыта.</div>}
-        {next && <div className="progress thin orange mt-8" style={{ maxWidth: 360, background: '#fff' }}><i style={{ width: `${((u.pet.xp - PET_LEVELS[lvl - 1].xp) / (next.xp - PET_LEVELS[lvl - 1].xp)) * 100}%` }} /></div>}
+        {next && <div className="progress thin orange mt-8" style={{ maxWidth: 360, background: 'var(--card)' }}><i style={{ width: `${((u.pet.xp - PET_LEVELS[lvl - 1].xp) / (next.xp - PET_LEVELS[lvl - 1].xp)) * 100}%` }} /></div>}
       </div>
       {next && <Button size="sm" onClick={() => navigate('/cabinet/pet')}>Прокачать питомца</Button>}
     </div>

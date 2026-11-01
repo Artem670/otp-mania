@@ -6,7 +6,7 @@ import type { Role, User } from '../data/types';
 import { ROLE_LABELS } from '../data/types';
 import { useRouter } from '../lib/router';
 import { ago, cx, fmt } from '../lib/utils';
-import { Avatar, Coin, useAction } from './ui';
+import { Avatar, Coin, ThemeToggle, useAction } from './ui';
 import { OtpLogo } from './brand';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
@@ -170,6 +170,7 @@ function Topbar({ me, onMenu }: { me: User; onMenu: () => void }) {
         <div className="balance-chip ru" title="РуКоины: валюта признания">
           <button onClick={() => navigate('/cabinet')} aria-label={`РуКоины: ${fmt(me.rucoins)}`}><Coin ru /><span className="num">{fmt(me.rucoins)}</span><span className="lbl muted" style={{ fontWeight: 500 }}>РуКоинов</span></button>
         </div>
+        <ThemeToggle />
         <button className="icon-btn" onClick={() => navigate('/cabinet/cart')} aria-label={`Корзина, товаров: ${cart.count}`}>
           <Cart size={18} />{cart.count > 0 && <span className="dot">{cart.count}</span>}
         </button>

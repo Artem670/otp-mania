@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../data/api';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../data/seed';
 import type { Role } from '../data/types';
-import { Button, Field, useAction } from '../components/ui';
+import { Button, Field, ThemeToggle, useAction } from '../components/ui';
 import { Briefcase, Key, Mail, ShieldAlert, UserIcon, ArrowRight } from '../components/icons';
 import { useRouter } from '../lib/router';
 import { OtpLogo } from '../components/brand';
@@ -62,7 +62,8 @@ export default function Login() {
         </div>
         <p className="xs muted" style={{ position: 'relative' }}>Прототип команды для кейс-чемпионата. Все люди и данные вымышлены.</p>
       </div>
-      <div className="login-form">
+      <div className="login-form" style={{ position: 'relative' }}>
+        <ThemeToggle className="login-theme" />
         <div className="login-box">
           <div className="row mb-16"><OtpLogo size={44} radius={12} /><div><div className="strong">ОТП Банк</div><div className="xs muted">Программа признания ОТП Мания</div></div></div>
           {sent ? (
