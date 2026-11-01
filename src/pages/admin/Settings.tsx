@@ -259,6 +259,9 @@ function ProductsTab() {
                   {PET_LEVELS.map((L, i) => <option key={i} value={i + 1}>{i + 1} · {L.title}</option>)}
                 </select>
               </Field>
+              <Field label="Номиналы сертификата, ₽" hint="Через запятую, например 1000, 2000, 3000. Цена и себестоимость выше указываются для первого номинала. Пусто: обычный товар">
+                <input className="input" value={(edit.nominals ?? []).join(', ')} onChange={(e) => { const v = e.target.value.split(/[,;\s]+/).map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0); setEdit({ ...edit, nominals: v.length ? v : undefined }); }} placeholder="1000, 2000, 3000" data-testid="nominals-input" />
+              </Field>
               <label className="row-sm small"><input type="checkbox" checked={!!edit.limited} onChange={(e) => setEdit({ ...edit, limited: e.target.checked })} /> Уникальная или лимитированная позиция (метрика C4)</label>
               <Field label="Описание"><textarea className="textarea" value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
             </div>

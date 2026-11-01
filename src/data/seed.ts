@@ -3,10 +3,10 @@ import type {
 } from './types';
 import { ARTICLES } from './articles';
 import { DAY, mulberry32, quarterStart } from '../lib/utils';
-import { isUnlocked, pickPrize } from './selectors';
+import { isUnlocked, lineTitle, pickPrize, unitCost, unitPrice } from './selectors';
 
 // Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
-export const DB_VERSION = 8;
+export const DB_VERSION = 9;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -129,10 +129,12 @@ export const PRODUCTS: Product[] = [
   { id: 'p-powerbank', name: 'Пауэрбанк 10 000 мА·ч', category: 'electronics', price: 6000, costRub: 1100, stock: 45, active: true, description: 'Быстрая зарядка, два порта USB-C.', icon: 'battery', tone: '#FF6A13' },
   { id: 'p-speaker', name: 'Портативная колонка', category: 'electronics', price: 12000, costRub: 2300, stock: 18, active: true, description: 'Защита от воды IP67, 12 часов музыки.', icon: 'speaker', tone: '#6E6E78' },
   { id: 'p-watch', name: 'Фитнес-браслет', category: 'electronics', price: 15000, costRub: 2700, stock: 20, active: true, description: 'Пульс, сон, шаги и уведомления.', icon: 'watch', tone: '#1F1F24' },
-  { id: 'p-cert-mp', name: 'Сертификат на маркетплейс, 1 000 ₽', category: 'certificates', price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронный код придёт на рабочую почту.', icon: 'gift', tone: '#9E6FC3' },
-  { id: 'p-cert-sport', name: 'Сертификат в спортзал, 3 000 ₽', category: 'certificates', price: 15000, costRub: 3000, stock: 999, active: true, description: 'Сеть фитнес-клубов в городах присутствия банка.', icon: 'dumbbell', tone: '#3A3A42' },
-  { id: 'p-cert-books', name: 'Сертификат в книжный, 1 000 ₽', category: 'certificates', price: 5000, costRub: 1000, stock: 999, active: true, description: 'Бумажные и электронные книги.', icon: 'book', tone: '#6E9E00' },
-  { id: 'p-cert-cinema', name: 'Сертификат в кино, 500 ₽', category: 'certificates', price: 2500, costRub: 500, stock: 999, active: true, description: 'Два билета на любой сеанс.', icon: 'film', tone: '#8E8E99' },
+  // Сертификаты: номинал 1 000 / 2 000 / 3 000 ₽ выбирается при покупке, 1 ₽ = 5 коинов (курс из кейса)
+  { id: 'p-cert-ozon', name: 'Сертификат Ozon', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронный сертификат маркетплейса. Код придёт на рабочую почту.', icon: 'gift', tone: '#3A3A42' },
+  { id: 'p-cert-wb', name: 'Сертификат Wildberries', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Электронный сертификат маркетплейса. Код придёт на рабочую почту.', icon: 'gift', tone: '#9E6FC3' },
+  { id: 'p-cert-ga', name: 'Сертификат «Золотое яблоко»', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Косметика и парфюмерия. Электронный код придёт на рабочую почту.', icon: 'sparkles', tone: '#1F1F24' },
+  { id: 'p-cert-sport', name: 'Сертификат в спортзал', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Сеть фитнес-клубов в городах присутствия банка.', icon: 'dumbbell', tone: '#6E9E00' },
+  { id: 'p-cert-books', name: 'Сертификат в книжный', category: 'certificates', nominals: [1000, 2000, 3000], price: 5000, costRub: 1000, stock: 999, active: true, description: 'Бумажные и электронные книги.', icon: 'book', tone: '#FF6A13' },
   { id: 'p-toy', name: 'Игрушка ОТуПик', category: 'merch', price: 2000, costRub: 350, stock: 80, active: true, description: 'Мягкая игрушка для детей сотрудников.', icon: 'baby', tone: '#9E6FC3', minLevel: 2 },
   { id: 'p-stickers', name: 'Набор стикеров', category: 'merch', price: 600, costRub: 80, stock: 300, active: true, description: '12 виниловых стикеров для ноутбука.', icon: 'sticker', tone: '#FF6A13' },
   { id: 'p-notebook', name: 'Блокнот в точку', category: 'merch', price: 1200, costRub: 200, stock: 140, active: true, description: 'Формат A5, 160 страниц, твёрдая обложка.', icon: 'notebook', tone: '#1F1F24' },
@@ -285,11 +287,13 @@ export function createSeed(now = Date.now()): DB {
   };
 
   const buy = (u: User, ts: number, p: Product, qty = 1) => {
-    const total = p.price * qty;
+    const nominal = p.nominals?.length ? pick(r, p.nominals) : undefined;
+    const price = unitPrice(p, nominal), cost = unitCost(p, nominal);
+    const total = price * qty;
     if (u.coins < total || p.stock < qty) return;
     const age = (now - ts) / DAY;
     const status: Order['status'] = age > 10 ? (r() < 0.06 ? 'cancelled' : 'delivered') : age > 3 ? 'processing' : 'new';
-    const o: Order = { id: id('or'), ts, userId: u.id, items: [{ productId: p.id, name: p.name, qty, price: p.price, costRub: p.costRub }], total, status };
+    const o: Order = { id: id('or'), ts, userId: u.id, items: [{ productId: p.id, name: lineTitle(p, nominal), qty, price, costRub: cost }], total, status };
     if (status === 'delivered') o.csi = r() < 0.75 ? 5 : r() < 0.7 ? 4 : 3;
     orders.push(o);
     u.coins -= total; p.stock -= qty;

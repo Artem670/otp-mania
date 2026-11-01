@@ -208,29 +208,34 @@ export const api = {
   },
 
   /* ---------- Корзина и заказы ---------- */
-  async addToCart(productId: string, qty = 1) {
+  async addToCart(productId: string, qty = 1, nominal?: number) {
     const db = getState();
     const u = requireUser(db);
     const p = db.products.find((x) => x.id === productId);
     if (!p || !p.active) fail('Товар недоступен');
     if (p!.currency === 'rucoins') fail('Эта награда за РуКоины: нажмите «Получить за РуКоины»');
     if (!isUnlocked(p!, u.pet.xp)) fail(`«${p!.name}» откроется на ${productLevel(p!)} уровне питомца (${PET_LEVELS[productLevel(p!) - 1].title})`);
-    const cur = (db.carts[u.id] ?? []).find((l) => l.productId === productId)?.qty ?? 0;
-    if (cur + qty > p!.stock) fail(`На складе осталось ${p!.stock} шт.`);
+    if (p!.nominals?.length) { if (!nominal) nominal = p!.nominals[0]; if (!p!.nominals.includes(nominal)) fail('Выберите номинал сертификата'); } else nominal = undefined;
+    const same = (l: { productId: string; nominal?: number }) => l.productId === productId && (l.nominal ?? undefined) === nominal;
+    const lines0 = db.carts[u.id] ?? [];
+    const totalOfProduct = lines0.filter((l) => l.productId === productId).reduce((a, l) => a + l.qty, 0);
+    if (totalOfProduct + qty > p!.stock) fail(`На складе осталось ${p!.stock} шт.`);
     await commit((d) => {
       const lines = d.carts[u.id] ?? (d.carts[u.id] = []);
-      const l = lines.find((x) => x.productId === productId);
-      if (l) l.qty += qty; else lines.push({ productId, qty });
+      const l = lines.find(same);
+      if (l) l.qty += qty; else lines.push(nominal ? { productId, qty, nominal } : { productId, qty });
     });
   },
-  async setCartQty(productId: string, qty: number) {
+  async setCartQty(productId: string, qty: number, nominal?: number) {
     const db = getState();
     const u = requireUser(db);
     const p = db.products.find((x) => x.id === productId);
-    if (p && qty > p.stock) fail(`На складе осталось ${p.stock} шт.`);
+    const same = (l: { productId: string; nominal?: number }) => l.productId === productId && (l.nominal ?? undefined) === (nominal ?? undefined);
+    const others = (db.carts[u.id] ?? []).filter((l) => l.productId === productId && !same(l)).reduce((a, l) => a + l.qty, 0);
+    if (p && qty + others > p.stock) fail(`На складе осталось ${p.stock} шт.`);
     await commit((d) => {
       const lines = d.carts[u.id] ?? [];
-      d.carts[u.id] = qty <= 0 ? lines.filter((l) => l.productId !== productId) : lines.map((l) => (l.productId === productId ? { ...l, qty } : l));
+      d.carts[u.id] = qty <= 0 ? lines.filter((l) => !same(l)) : lines.map((l) => (same(l) ? { ...l, qty } : l));
     });
   },
   async checkout() {
@@ -251,7 +256,7 @@ export const api = {
       const x = requireUser(d);
       x.coins -= cart.total;
       for (const l of cart.lines) { const p = d.products.find((y) => y.id === l.productId)!; p.stock -= l.qty; trackStock(p); }
-      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: cart.total, status: 'new', items: cart.lines.map((l) => ({ productId: l.productId, name: l.product.name, qty: l.qty, price: l.product.price, costRub: l.product.costRub })) });
+      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: cart.total, status: 'new', items: cart.lines.map((l) => ({ productId: l.productId, name: l.title, qty: l.qty, price: l.price, costRub: l.costRub })) });
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -cart.total, title: `Заказ из ${cart.count} поз.`, refId: orderId });
       d.carts[x.id] = [];
       notify(d, x.id, `Заказ оформлен: ${cart.total.toLocaleString('ru-RU')} коинов. Статус можно отслеживать в разделе «Заказы»`, '/cabinet/orders');
@@ -583,6 +588,8 @@ export const api = {
     if (!isPositiveInt(p.price)) fail('Цена: целое число коинов больше нуля');
     if (!(p.costRub >= 0)) fail('Себестоимость не может быть отрицательной');
     if (!(p.stock >= 0) || Math.floor(p.stock) !== p.stock) fail('Остаток: целое число от нуля');
+    if (p.nominals && (!p.nominals.length || p.nominals.some((n) => !isPositiveInt(n)))) fail('Номиналы: целые суммы в рублях через запятую');
+    if (p.nominals) p = { ...p, nominals: [...new Set(p.nominals)].sort((a, b) => a - b) };
     await commit((d) => {
       const i = d.products.findIndex((x) => x.id === p.id);
       const next = { ...p, name: p.name.trim(), stockouts: i >= 0 ? structuredClone(d.products[i].stockouts) : undefined };

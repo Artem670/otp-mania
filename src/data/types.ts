@@ -104,6 +104,7 @@ export interface Product {
   icon: string;
   tone: string;
   minLevel?: number; // уровень питомца, с которого товар доступен; если не задан, берётся по категории
+  nominals?: number[]; // номиналы сертификата в рублях; price и costRub указаны для первого номинала
   currency?: Currency; // за что продаётся: коины (по умолчанию) или РуКоины (нематериальные награды)
   limited?: boolean; // уникальная или лимитированная позиция (метрика C4)
   stockouts?: { from: number; to?: number }[]; // периоды, когда товара не было в наличии (метрика C3)
@@ -268,6 +269,7 @@ export type SignalStatus = 'new' | 'review' | 'confirmed' | 'dismissed';
 export interface CartLine {
   productId: string;
   qty: number;
+  nominal?: number; // выбранный номинал сертификата, ₽
 }
 
 export interface DB {

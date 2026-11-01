@@ -31,7 +31,7 @@ export default function CartPage() {
     );
   }
 
-  const setQty = (id: string, q: number) => run('q-' + id, () => api.setCartQty(id, q));
+  const setQty = (id: string, q: number, nominal?: number) => run('q-' + id + (nominal ?? ''), () => api.setCartQty(id, q, nominal));
   const checkout = async () => {
     const id = await run('checkout', () => api.checkout());
     setConfirm(false);
@@ -47,20 +47,20 @@ export default function CartPage() {
         <div className="grid g-main">
           <Card className="pad-0">
             {lines.map((l) => (
-              <div key={l.productId} className="row" style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 76, height: 76, borderRadius: 14, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt id={l.product.id} icon={l.product.icon} tone={l.product.tone} /></div>
+              <div key={l.key} className="row" style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ width: 76, height: 76, borderRadius: 14, position: 'relative', overflow: 'hidden', flex: 'none' }}><ProductArt id={l.product.id} icon={l.product.icon} tone={l.product.tone} nominal={l.nominal} /></div>
                 <div className="grow">
                   <div className="xs muted">{CATEGORY_LABELS[l.product.category]}</div>
-                  <b>{l.product.name}</b>
-                  <div className="small muted mt-4">{fmt(l.product.price)} <Coin /> за шт.{l.qty > l.product.stock && <span style={{ color: 'var(--red)' }}> · на складе {l.product.stock}</span>}</div>
+                  <b>{l.title}</b>
+                  <div className="small muted mt-4">{fmt(l.price)} <Coin /> за шт.{l.qty > l.product.stock && <span style={{ color: 'var(--red)' }}> · на складе {l.product.stock}</span>}</div>
                 </div>
                 <div className="qty" aria-label={`Количество: ${l.qty}`}>
-                  <button onClick={() => setQty(l.productId, l.qty - 1)} aria-label="Меньше" disabled={!!busy}><Minus size={14} /></button>
+                  <button onClick={() => setQty(l.productId, l.qty - 1, l.nominal)} aria-label="Меньше" disabled={!!busy}><Minus size={14} /></button>
                   <span className="num">{l.qty}</span>
-                  <button onClick={() => setQty(l.productId, l.qty + 1)} aria-label="Больше" disabled={!!busy}><Plus size={14} /></button>
+                  <button onClick={() => setQty(l.productId, l.qty + 1, l.nominal)} aria-label="Больше" disabled={!!busy}><Plus size={14} /></button>
                 </div>
-                <div style={{ width: 110, textAlign: 'right' }}><Amount value={l.product.price * l.qty} /></div>
-                <Button variant="ghost" size="sm" icon={Trash} aria-label={`Удалить «${l.product.name}»`} onClick={() => setQty(l.productId, 0)} />
+                <div style={{ width: 110, textAlign: 'right' }}><Amount value={l.price * l.qty} /></div>
+                <Button variant="ghost" size="sm" icon={Trash} aria-label={`Удалить «${l.title}»`} onClick={() => setQty(l.productId, 0, l.nominal)} />
               </div>
             ))}
           </Card>

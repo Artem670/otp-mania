@@ -590,3 +590,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .card-head { flex-wrap: wrap; }
   .card-head > .btn, .card-head > button { max-width: 100%; }
 }
+
+/* Номиналы сертификатов */
+.nominals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nominal { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--card); font-size: 12px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.nominal:hover { border-color: var(--text-2); }
+.nominal.on { background: var(--black); border-color: var(--black); color: #fff; }
+[data-theme="dark"] .nominal.on { background: var(--orange); border-color: var(--orange); color: #16161a; }
+.nominals.lg .nominal { height: 38px; padding: 0 16px; font-size: 14px; }

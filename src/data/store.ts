@@ -153,6 +153,11 @@ async function migrate(db: DB) {
     const fresh = createSeed(now);
     const newProducts = fresh.products.filter((p) => !db.products.some((x) => x.id === p.id) && (p.category === 'charity' || p.currency === 'rucoins'));
     await tryUpsert(newProducts.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { db.products.push(...newProducts); });
+    // Сертификаты: новые позиции с номиналами, «маркетплейс» и «кино» снимаются с продажи
+    const certs = fresh.products.filter((p) => p.category === 'certificates').flatMap((p) => { const cur = db.products.find((x) => x.id === p.id); return !cur ? [p] : !cur.nominals ? [{ ...p, stock: cur.stock, stockouts: cur.stockouts }] : []; });
+    const retired = db.products.filter((p) => ['p-cert-mp', 'p-cert-cinema'].includes(p.id) && p.active).map((p) => ({ ...p, active: false }));
+    const certRows = [...certs, ...retired];
+    await tryUpsert(certRows.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { certRows.forEach((p) => { const i = db.products.findIndex((x) => x.id === p.id); if (i >= 0) db.products[i] = p; else db.products.push(p); }); });
     // выходной и обед с правлением переезжают на витрину «За РуКоины», остаток сохраняем
     const moved = fresh.products.filter((p) => p.currency === 'rucoins').flatMap((p) => { const cur = db.products.find((x) => x.id === p.id); return cur && cur.currency !== 'rucoins' ? [{ ...p, stock: cur.stock, stockouts: cur.stockouts }] : []; });
     await tryUpsert(moved.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { moved.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
-import { cartOf, CATEGORY_LEVEL, isUnlocked, me as selectMe, petLevel, PET_LEVELS, productLevel } from '../../data/selectors';
+import { cartOf, CATEGORY_LEVEL, isUnlocked, me as selectMe, petLevel, PET_LEVELS, productLevel, unitPrice } from '../../data/selectors';
 import { CATEGORY_LABELS, type Product, type ProductCategory } from '../../data/types';
 import { useRouter } from '../../lib/router';
 import { cx, fmt } from '../../lib/utils';
@@ -40,7 +40,9 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
     return c;
   }, [db]);
 
-  const add = (p: Product) => run('add-' + p.id, () => api.addToCart(p.id), `«${p.name}» в корзине`);
+  const [nom, setNom] = useState<Record<string, number>>({});
+  const nominalOf = (p: Product) => (p.nominals?.length ? nom[p.id] ?? p.nominals[0] : undefined);
+  const add = (p: Product) => run('add-' + p.id, () => api.addToCart(p.id, 1, nominalOf(p)), `«${p.name}»${nominalOf(p) ? ` на ${nominalOf(p)!.toLocaleString('ru-RU')} ₽` : ''} в корзине`);
   const redeem = (p: Product) => run('ru-' + p.id, () => api.redeemPerk(p.id), `«${p.name}» ваша! Согласуйте дату с руководителем`);
   const open = productId ? db.products.find((p) => p.id === productId) : null;
 
@@ -69,19 +71,24 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
       ) : list.length ? (
         <div className="products">
           {list.map((p) => {
-            const inCart = cart.find((l) => l.productId === p.id)?.qty ?? 0;
+            const inCart = cart.filter((l) => l.productId === p.id && (l.nominal ?? undefined) === nominalOf(p)).reduce((a, l) => a + l.qty, 0);
             const locked = isLocked(p, u.pet.xp);
             return (
               <article key={p.id} className="product" data-testid={`product-${p.id}`}>
                 <button className="product-img" onClick={() => navigate(`/cabinet/shop/${p.id}`)} aria-label={`Открыть «${p.name}»`}>
-                  <ProductArt id={p.id} icon={p.icon} tone={p.tone} />
+                  <ProductArt id={p.id} icon={p.icon} tone={p.tone} nominal={nominalOf(p)} />
                   <span className="tag">{p.stock <= 10 ? <Badge tone="orange">Осталось {p.stock}</Badge> : hits.has(p.id) ? <Badge tone="dark">Хит</Badge> : null}</span>
                 </button>
                 <div className="product-body">
                   <div className="xs muted">{CATEGORY_LABELS[p.category]}</div>
                   <button className="product-name" onClick={() => navigate(`/cabinet/shop/${p.id}`)}>{p.name}</button>
+                  {p.nominals && p.nominals.length > 1 && (
+                    <div className="nominals" role="radiogroup" aria-label={`Номинал: ${p.name}`}>
+                      {p.nominals.map((n) => <button key={n} type="button" role="radio" aria-checked={nominalOf(p) === n} className={cx('nominal', nominalOf(p) === n && 'on')} onClick={() => setNom((x) => ({ ...x, [p.id]: n }))} data-testid={`nom-${p.id}-${n}`}>{(n / 1000).toLocaleString('ru-RU')} тыс. ₽</button>)}
+                    </div>
+                  )}
                   <div className="row between mt-4" style={{ marginTop: 'auto' }}>
-                    <Amount value={p.price} ru={p.currency === 'rucoins'} />
+                    <Amount value={unitPrice(p, nominalOf(p))} ru={p.currency === 'rucoins'} />
                     {p.currency === 'rucoins' ? (p.stock === 0 ? <Badge tone="red">Мест нет</Badge>
                       : <Button size="sm" variant="orange" loading={busy === 'ru-' + p.id} disabled={u.rucoins < p.price} onClick={() => redeem(p)} aria-label={`Получить «${p.name}» за РуКоины`} data-testid={`redeem-${p.id}`}>{u.rucoins < p.price ? 'Не хватает' : 'Получить'}</Button>)
                       : locked ? <Badge><Lock size={12} />Питомец ур. {productLevel(p)}</Badge>
@@ -111,19 +118,29 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
   const locked = isLocked(p, u.pet.xp);
   const sold = db.orders.reduce((a, o) => a + o.items.filter((i) => i.productId === p.id).reduce((x, i) => x + i.qty, 0), 0);
   const ru = p.currency === 'rucoins';
-  const enough = u.coins >= p.price * qty;
+  const [nominal, setNominal] = useState<number | undefined>(p.nominals?.[0]);
+  const price = unitPrice(p, nominal);
+  const enough = u.coins >= price * qty;
   const add = async (thenCart: boolean) => {
-    const ok = await run('m-add', () => api.addToCart(p.id, qty).then(() => true), `«${p.name}» × ${qty} в корзине`);
+    const ok = await run('m-add', () => api.addToCart(p.id, qty, nominal).then(() => true), `«${p.name}»${nominal ? `, ${nominal.toLocaleString('ru-RU')} ₽` : ''} × ${qty} в корзине`);
     if (ok && thenCart) navigate('/cabinet/cart');
   };
   return (
     <Modal open onClose={onClose} title={p.name} size="lg">
       <div className="grid g2" style={{ gap: 22 }}>
-        <div className="product-img" style={{ borderRadius: 18, cursor: 'default', aspectRatio: '1' }}><ProductArt id={p.id} icon={p.icon} tone={p.tone} size="lg" /></div>
+        <div className="product-img" style={{ borderRadius: 18, cursor: 'default', aspectRatio: '1' }}><ProductArt id={p.id} icon={p.icon} tone={p.tone} size="lg" nominal={nominal} /></div>
         <div className="col" style={{ gap: 14 }}>
           <div className="row-sm row-wrap"><Badge>{CATEGORY_LABELS[p.category]}</Badge>{sold > 0 && <Badge tone="orange">Купили {sold} раз</Badge>}</div>
           <p className="text-2">{p.description}</p>
-          <div className="price" style={{ fontSize: 28 }}>{fmt(p.price)} <Coin ru={ru} /></div>
+          {p.nominals && p.nominals.length > 1 && (
+            <div>
+              <div className="small muted mb-8">Номинал сертификата</div>
+              <div className="nominals lg" role="radiogroup" aria-label="Номинал">
+                {p.nominals.map((n) => <button key={n} type="button" role="radio" aria-checked={nominal === n} className={cx('nominal', nominal === n && 'on')} onClick={() => setNominal(n)}>{n.toLocaleString('ru-RU')} ₽</button>)}
+              </div>
+            </div>
+          )}
+          <div className="price" style={{ fontSize: 28 }}>{fmt(price)} <Coin ru={ru} /></div>
           <div className="small muted">{p.stock > 100 ? 'В наличии' : `На складе: ${p.stock} шт.`}</div>
           {ru ? (
             <>
@@ -141,9 +158,9 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
                   <span className="num">{qty}</span>
                   <button onClick={() => setQty(Math.min(p.stock, qty + 1))} aria-label="Больше"><Plus size={14} /></button>
                 </div>
-                <span className="small muted">Итого: <b className="num">{fmt(p.price * qty)}</b></span>
+                <span className="small muted">Итого: <b className="num">{fmt(price * qty)}</b></span>
               </div>
-              {!enough && <div className="alert warn small">На балансе {fmt(u.coins)} коинов. Не хватает {fmt(p.price * qty - u.coins)}, но товар можно отложить в корзину.</div>}
+              {!enough && <div className="alert warn small">На балансе {fmt(u.coins)} коинов. Не хватает {fmt(price * qty - u.coins)}, но товар можно отложить в корзину.</div>}
               <div className="row-sm row-wrap">
                 <Button icon={Cart} loading={busy === 'm-add'} onClick={() => add(false)}>В корзину</Button>
                 <Button variant="secondary" onClick={() => add(true)}>Купить сейчас</Button>

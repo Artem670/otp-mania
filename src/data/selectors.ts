@@ -58,11 +58,18 @@ export const poolParticipants = (p: Pool) => new Set(p.contributions.map((c) => 
 export const poolVisibleTo = (p: Pool, u: User) => p.scope === 'all' || p.scope === u.deptId || p.organizerId === u.id;
 
 export const cartOf = (db: DB, userId: string) => db.carts[userId] ?? [];
+/** Цена и себестоимость с учётом номинала сертификата (курс как у первого номинала: 1 000 ₽ = 5 000 коинов). */
+export const unitPrice = (p: Product, nominal?: number) => (p.nominals?.length && nominal ? Math.round((p.price * nominal) / p.nominals[0]) : p.price);
+export const unitCost = (p: Product, nominal?: number) => (p.nominals?.length && nominal ? Math.round((p.costRub * nominal) / p.nominals[0]) : p.costRub);
+export const lineTitle = (p: Pick<Product, 'name'>, nominal?: number) => (nominal ? `${p.name}, ${nominal.toLocaleString('ru-RU')} ₽` : p.name);
+export const lineKey = (productId: string, nominal?: number) => productId + (nominal ? ':' + nominal : '');
+
 export function cartDetailed(db: DB, userId: string) {
   const lines = cartOf(db, userId)
     .map((l) => ({ ...l, product: db.products.find((p) => p.id === l.productId)! }))
-    .filter((l) => l.product);
-  const total = sum(lines.map((l) => l.product.price * l.qty));
+    .filter((l) => l.product)
+    .map((l) => ({ ...l, key: lineKey(l.productId, l.nominal), price: unitPrice(l.product, l.nominal), costRub: unitCost(l.product, l.nominal), title: lineTitle(l.product, l.nominal) }));
+  const total = sum(lines.map((l) => l.price * l.qty));
   return { lines, total, count: sum(lines.map((l) => l.qty)) };
 }
 

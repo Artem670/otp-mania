@@ -282,12 +282,12 @@ export function ThemeToggle({ className }: { className?: string }) {
 }
 
 /* ---------- Иллюстрации ---------- */
-export function ProductArt({ id, icon, tone }: { id?: string; icon: string; tone: string; size?: 'md' | 'lg' }) {
+export function ProductArt({ id, icon, tone, nominal }: { id?: string; icon: string; tone: string; size?: 'md' | 'lg'; nominal?: number }) {
   const dark = ['#16161a', '#1f1f24', '#3a3a42'].includes(tone.toLowerCase());
   const bg = id === 'p-toy' ? '#f5f4ef' : dark ? 'linear-gradient(150deg, #fafafa 0%, #ececf0 100%)' : `linear-gradient(150deg, #ffffff 0%, ${tone}14 55%, ${tone}30 100%)`;
   return (
     <div style={{ position: 'absolute', inset: 0, background: bg, display: 'grid', placeItems: 'center' }} aria-hidden="true">
-      <ProductIllustration id={id} icon={icon} tone={tone} />
+      <ProductIllustration id={id} icon={icon} tone={tone} nominal={nominal} />
     </div>
   );
 }

@@ -34,7 +34,9 @@ function GiftCard({ tone, label, amount, emblem }: { tone: string; label: string
   );
 }
 
-const ART: Record<string, (tone: string) => ReactNode> = {
+const rubles = (n = 1000) => `${n.toLocaleString('ru-RU')} ₽`;
+const bagEmblem = <g><path d="M0 4 H22 L20 24 H2 Z" fill="#fff" opacity=".9" /><path d="M6 6 Q6 -4 11 -4 Q16 -4 16 6" stroke="#fff" strokeWidth="2.5" fill="none" /></g>;
+const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
   'p-hoodie': (t) => (
     <g>
       <path d="M70 52 Q100 30 130 52 L156 64 Q170 70 172 86 L178 140 Q178 148 170 148 L158 148 L152 104 L150 160 Q150 168 142 168 H58 Q50 168 50 160 L48 104 L42 148 L30 148 Q22 148 22 140 L28 86 Q30 70 44 64 Z" fill={t} />
@@ -190,8 +192,11 @@ const ART: Record<string, (tone: string) => ReactNode> = {
     </g>
   ),
   'p-cert-mp': (t) => <GiftCard tone={t} label="Маркетплейс" amount="1 000 ₽" emblem={<g><path d="M0 4 H22 L20 24 H2 Z" fill="#fff" opacity=".9" /><path d="M6 6 Q6 -4 11 -4 Q16 -4 16 6" stroke="#fff" strokeWidth="2.5" fill="none" /></g>} />,
-  'p-cert-sport': (t) => <GiftCard tone={t} label="Фитнес" amount="3 000 ₽" emblem={<g fill={LIME}><rect x="-2" y="6" width="6" height="16" rx="2" /><rect x="22" y="6" width="6" height="16" rx="2" /><rect x="4" y="12" width="18" height="4" /></g>} />,
-  'p-cert-books': (t) => <GiftCard tone={t} label="Книги" amount="1 000 ₽" emblem={<g><path d="M0 4 Q8 0 13 4 V26 Q8 22 0 26 Z" fill="#fff" /><path d="M26 4 Q18 0 13 4 V26 Q18 22 26 26 Z" fill="#fff" opacity=".75" /></g>} />,
+  'p-cert-sport': (t, n) => <GiftCard tone={t} label="Спортзал" amount={rubles(n)} emblem={<g fill={LIME}><rect x="-2" y="6" width="6" height="16" rx="2" /><rect x="22" y="6" width="6" height="16" rx="2" /><rect x="4" y="12" width="18" height="4" /></g>} />,
+  'p-cert-books': (t, n) => <GiftCard tone={t} label="Книги" amount={rubles(n)} emblem={<g><path d="M0 4 Q8 0 13 4 V26 Q8 22 0 26 Z" fill="#fff" /><path d="M26 4 Q18 0 13 4 V26 Q18 22 26 26 Z" fill="#fff" opacity=".75" /></g>} />,
+  'p-cert-ozon': (t, n) => <GiftCard tone={t} label="Ozon" amount={rubles(n)} emblem={bagEmblem} />,
+  'p-cert-wb': (t, n) => <GiftCard tone={t} label="Wildberries" amount={rubles(n)} emblem={bagEmblem} />,
+  'p-cert-ga': (t, n) => <GiftCard tone={t} label="Золотое яблоко" amount={rubles(n)} emblem={<g><path d="M13 6 C4 2 -2 10 2 19 C5 26 10 27 13 24 C16 27 21 26 24 19 C28 10 22 2 13 6 Z" fill="#f2c94c" /><path d="M13 6 Q14 0 19 -2" stroke="#6e9e00" strokeWidth="2.5" fill="none" strokeLinecap="round" /></g>} />,
   'p-cert-cinema': (t) => <GiftCard tone={t} label="Кино" amount="500 ₽" emblem={<g><rect x="0" y="2" width="26" height="22" rx="3" fill="#fff" /><path d="M10 7 L19 13 L10 19 Z" fill={t} /></g>} />,
   'p-stickers': (t) => (
     <g>
@@ -351,20 +356,20 @@ const ART: Record<string, (tone: string) => ReactNode> = {
 /** Запасные рисунки по иконке для новых товаров. */
 const BY_ICON: Record<string, string> = {
   shirt: 'p-tee', snowflake: 'p-beanie', coffee: 'p-mug', backpack: 'p-backpack', umbrella: 'p-umbrella', shoppingbag: 'p-shopper',
-  headphones: 'p-headphones', battery: 'p-powerbank', speaker: 'p-speaker', watch: 'p-watch', gift: 'p-cert-mp', dumbbell: 'p-cert-sport',
+  headphones: 'p-headphones', battery: 'p-powerbank', speaker: 'p-speaker', watch: 'p-watch', gift: 'p-cert-ozon', dumbbell: 'p-cert-sport',
   book: 'p-cert-books', film: 'p-cert-cinema', sticker: 'p-stickers', notebook: 'p-notebook', paw: 'p-pet', heart: 'p-don-bereginya',
   palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-masterclass', mountain: 'p-ski',
 };
 
-export function ProductIllustration({ id, icon, tone }: { id?: string; icon: string; tone: string }) {
+export function ProductIllustration({ id, icon, tone, nominal }: { id?: string; icon: string; tone: string; nominal?: number }) {
   if (id === 'p-toy' || (!id && icon === 'baby')) {
     return <img src={puffin} alt="" style={{ width: '86%', height: '86%', objectFit: 'contain', position: 'relative', mixBlendMode: 'multiply' }} />;
   }
-  const key = id && ART[id] ? id : BY_ICON[icon] ?? 'p-cert-mp';
+  const key = id && ART[id] ? id : BY_ICON[icon] ?? 'p-cert-ozon';
   return (
     <svg viewBox="0 0 200 200" style={{ width: '82%', height: '82%', position: 'relative', overflow: 'visible' }} aria-hidden="true">
       <ellipse cx="100" cy="182" rx="62" ry="7" fill="#000" opacity=".08" />
-      {ART[key](tone)}
+      {ART[key](tone, nominal)}
     </svg>
   );
 }
