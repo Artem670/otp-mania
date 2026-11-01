@@ -66,6 +66,7 @@ function ProgramTab() {
           <NumField label="Максимум одному сотруднику в месяц" value={s.maxPerEmployeeMonth} step={500} onChange={(v) => set('maxPerEmployeeMonth', v)} />
           <NumField label="Минимальная длина комментария" value={s.minCommentLength} onChange={(v) => set('minCommentLength', v)} suffix="симв." />
           <NumField label="Лимит переводов коинов коллегам в месяц" value={s.transferLimitMonth} step={100} onChange={(v) => set('transferLimitMonth', v)} suffix="коинов" hint="Сколько один сотрудник может перевести коллегам за календарный месяц. 0: переводы выключены" />
+          <NumField label="Лимит сертификатов в месяц" value={s.certLimitMonth ?? 1} step={1} onChange={(v) => set('certLimitMonth', v)} suffix="шт." hint="Сколько сертификатов один сотрудник может купить за календарный месяц, любого номинала" />
           <NumField label="Фонд руководителя по умолчанию, на квартал" value={s.quarterFundDefault} step={5000} onChange={(v) => set('quarterFundDefault', v)} />
         </div>
       </Card>

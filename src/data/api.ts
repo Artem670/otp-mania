@@ -3,8 +3,8 @@ import { auth, docs, getSession, remoteEnabled } from './remote';
 import { DEPTS_PUBLIC } from './seed';
 import { ApiError } from './errors';
 import type { Category, DB, OrderStatus, Product, PulseQuestion, Role, Settings, SignalStatus, User } from './types';
-import { transfersThisMonth, cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
-import { uid } from '../lib/utils';
+import { certLimit, certsInCart, certsThisMonth, transfersThisMonth, cartDetailed, employeeMonthReceived, isUnlocked, pickPrize, spinsThisMonth, managerQuarter, PET_LEVELS, poolRaised, productLevel, teamOf, userById } from './selectors';
+import { plural, uid } from '../lib/utils';
 
 /**
  * Единый слой работы с данными. Интерфейс асинхронный, как у настоящего API:
@@ -31,6 +31,18 @@ function trackStock(p: Product, ts = Date.now()) {
   const open = p.stockouts?.find((x) => !x.to);
   if (p.stock <= 0 && !open) (p.stockouts ??= []).push({ from: ts });
   if (p.stock > 0 && open) open.to = ts;
+}
+/** Проверка лимита сертификатов: уже куплено в этом месяце + в корзине + добавляемое. */
+function checkCertLimit(db: DB, userId: string, adding: number) {
+  const limit = certLimit(db);
+  const bought = certsThisMonth(db, userId);
+  if (bought + adding > limit) {
+    const left = Math.max(0, limit - bought);
+    const word = (n: number) => plural(n, 'сертификат', 'сертификата', 'сертификатов');
+    fail(left === 0
+      ? `Лимит: ${limit} ${word(limit)} в месяц, в этом месяце он уже использован. Следующий можно взять с 1 числа`
+      : `Лимит: ${limit} ${word(limit)} в месяц на сотрудника. Сейчас можно взять ${left} ${word(left)}`);
+  }
 }
 const isPositiveInt = (n: number) => Number.isFinite(n) && n > 0 && Math.floor(n) === n;
 
@@ -220,6 +232,7 @@ export const api = {
     const lines0 = db.carts[u.id] ?? [];
     const totalOfProduct = lines0.filter((l) => l.productId === productId).reduce((a, l) => a + l.qty, 0);
     if (totalOfProduct + qty > p!.stock) fail(`На складе осталось ${p!.stock} шт.`);
+    if (p!.category === 'certificates') checkCertLimit(db, u.id, certsInCart(db, u.id) + qty);
     await commit((d) => {
       const lines = d.carts[u.id] ?? (d.carts[u.id] = []);
       const l = lines.find(same);
@@ -233,6 +246,10 @@ export const api = {
     const same = (l: { productId: string; nominal?: number }) => l.productId === productId && (l.nominal ?? undefined) === (nominal ?? undefined);
     const others = (db.carts[u.id] ?? []).filter((l) => l.productId === productId && !same(l)).reduce((a, l) => a + l.qty, 0);
     if (p && qty + others > p.stock) fail(`На складе осталось ${p.stock} шт.`);
+    if (p?.category === 'certificates' && qty > 0) {
+      const cur = (db.carts[u.id] ?? []).find(same)?.qty ?? 0;
+      if (qty > cur) checkCertLimit(db, u.id, certsInCart(db, u.id) - cur + qty);
+    }
     await commit((d) => {
       const lines = d.carts[u.id] ?? [];
       d.carts[u.id] = qty <= 0 ? lines.filter((l) => !same(l)) : lines.map((l) => (same(l) ? { ...l, qty } : l));
@@ -250,6 +267,7 @@ export const api = {
       if (l.qty > l.product.stock) fail(`«${l.product.name}»: на складе ${l.product.stock} шт.`);
       if (!isUnlocked(l.product, u.pet.xp)) fail(`«${l.product.name}» откроется на ${productLevel(l.product)} уровне питомца`);
     }
+    checkCertLimit(db, u.id, certsInCart(db, u.id));
     if (cart.total > u.coins) fail(`Недостаточно коинов: нужно ${cart.total.toLocaleString('ru-RU')}, на балансе ${u.coins.toLocaleString('ru-RU')}`);
     const orderId = uid('or');
     await commit((d) => {
@@ -657,6 +675,8 @@ export const api = {
     if (!isPositiveInt(s.spinPrice)) fail('Цена прокрутки: целое число коинов');
     if (!(s.spinLimit >= 0) || Math.floor(s.spinLimit) !== s.spinLimit) fail('Лимит прокруток: целое число от нуля');
     if (!(s.transferLimitMonth >= 0) || Math.floor(s.transferLimitMonth) !== s.transferLimitMonth) fail('Лимит переводов: целое число коинов от нуля');
+    if (s.certLimitMonth !== undefined && (!(s.certLimitMonth >= 0) || Math.floor(s.certLimitMonth) !== s.certLimitMonth)) fail('Лимит сертификатов: целое число от нуля');
+    if (s.certLimitMonth !== undefined && (!(s.certLimitMonth >= 0) || Math.floor(s.certLimitMonth) !== s.certLimitMonth)) fail('Лимит сертификатов: целое число от нуля');
     const probSum = s.wheelPrizes.reduce((a, p) => a + p.prob, 0);
     if (s.wheelPrizes.some((p) => !(p.prob >= 0))) fail('Вероятности призов не могут быть отрицательными');
     if (Math.abs(probSum - 100) > 0.01) fail(`Сумма вероятностей призов должна быть 100%, сейчас ${probSum.toFixed(1).replace('.', ',')}%`);

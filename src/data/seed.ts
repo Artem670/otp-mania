@@ -159,6 +159,7 @@ const SETTINGS: Settings = {
   maxPerAccrual: 8000,
   maxPerEmployeeMonth: 15000,
   transferLimitMonth: 1000,
+  certLimitMonth: 1,
   minCommentLength: 20,
   spinPrice: 1000,
   spinLimit: 20,
@@ -290,6 +291,10 @@ export function createSeed(now = Date.now()): DB {
     const price = unitPrice(p, nominal), cost = unitCost(p, nominal);
     const total = price * qty;
     if (u.coins < total || p.stock < qty) return;
+    if (p.category === 'certificates') { // лимит: 1 сертификат в календарный месяц
+      const m = new Date(ts); const from = new Date(m.getFullYear(), m.getMonth(), 1).getTime(); const to = new Date(m.getFullYear(), m.getMonth() + 1, 1).getTime();
+      if (qty > 1 || orders.some((o) => o.userId === u.id && o.ts >= from && o.ts < to && o.status !== 'cancelled' && o.items.some((i) => i.productId.startsWith('p-cert')))) return;
+    }
     const age = (now - ts) / DAY;
     const status: Order['status'] = age > 10 ? (r() < 0.06 ? 'cancelled' : 'delivered') : age > 3 ? 'processing' : 'new';
     const o: Order = { id: id('or'), ts, userId: u.id, items: [{ productId: p.id, name: lineTitle(p, nominal), qty, price, costRub: cost }], total, status };

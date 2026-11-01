@@ -247,6 +247,7 @@ export interface Settings {
   spinPrice: number; // цена прокрутки колеса, коинов
   spinLimit: number; // прокруток в месяц на человека
   transferLimitMonth: number; // сколько коинов можно перевести коллегам за месяц
+  certLimitMonth?: number; // сколько сертификатов сотрудник может купить за календарный месяц (по умолчанию 1)
   wheelPrizes: WheelPrize[];
   metricTargets: MetricTargets;
   minCommentLength: number;

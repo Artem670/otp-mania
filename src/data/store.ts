@@ -184,7 +184,7 @@ async function migrate(db: DB) {
     });
   }
   // База знаний: новые статьи по всем механикам (пишет только администратор)
-  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || db.articles.some((a) => /не стоит банку|Что считает программа|Легенда \(20 000\)|Впечатлени/.test(a.body))) {
+  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || !db.articles.some((a) => a.body.includes('Лимит на сертификаты')) || db.articles.some((a) => /не стоит банку|Что считает программа|Легенда \(20 000\)|Впечатлени/.test(a.body))) {
     await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
   }
   // Пересчёт цен (версия 13): цена = розница аналога × 5, себестоимость = закупка тиражом. Трогаем только цены, которые админ не менял.

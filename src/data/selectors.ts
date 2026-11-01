@@ -46,6 +46,17 @@ export function transfersThisMonth(db: DB, userId: string, now = Date.now()) {
   const from = monthStart(now);
   return sum(db.txs.filter((t) => t.userId === userId && t.kind === 'transfer' && t.amount < 0 && t.ts >= from).map((t) => -t.amount));
 }
+/** Лимит сертификатов в месяц (по умолчанию 1). */
+export const certLimit = (db: DB) => db.settings.certLimitMonth ?? 1;
+/** Сколько сертификатов сотрудник уже купил в этом месяце (отменённые заказы не считаются). */
+export function certsThisMonth(db: DB, userId: string, now = Date.now()) {
+  const from = monthStart(now);
+  const isCert = (id: string) => db.products.find((p) => p.id === id)?.category === 'certificates';
+  return sum(db.orders.filter((o) => o.userId === userId && o.ts >= from && o.status !== 'cancelled' && (o.currency ?? 'coins') === 'coins')
+    .flatMap((o) => o.items.filter((i) => isCert(i.productId)).map((i) => i.qty)));
+}
+/** Сертификатов в корзине. */
+export const certsInCart = (db: DB, userId: string) => sum((db.carts[userId] ?? []).filter((l) => db.products.find((p) => p.id === l.productId)?.category === 'certificates').map((l) => l.qty));
 export const poolRaised = (p: Pool) => sum(p.contributions.map((c) => c.amount));
 export function charityTotals(db: DB) {
   const fromPools = sum(db.pools.filter((p) => p.kind === 'charity' && p.status !== 'cancelled').map(poolRaised));

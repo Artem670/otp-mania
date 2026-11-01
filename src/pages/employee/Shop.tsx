@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useDB } from '../../data/store';
 import { api } from '../../data/api';
-import { cartOf, CATEGORY_LEVEL, isUnlocked, me as selectMe, petLevel, PET_LEVELS, productLevel, unitPrice } from '../../data/selectors';
+import { cartOf, certLimit, certsInCart, certsThisMonth, CATEGORY_LEVEL, isUnlocked, me as selectMe, petLevel, PET_LEVELS, productLevel, unitPrice } from '../../data/selectors';
 import { CATEGORY_LABELS, type Product, type ProductCategory } from '../../data/types';
 import { useRouter } from '../../lib/router';
 import { cx, fmt } from '../../lib/utils';
@@ -87,12 +87,14 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
                       {p.nominals.map((n) => <button key={n} type="button" role="radio" aria-checked={nominalOf(p) === n} className={cx('nominal', nominalOf(p) === n && 'on')} onClick={() => setNom((x) => ({ ...x, [p.id]: n }))} data-testid={`nom-${p.id}-${n}`}>{(n / 1000).toLocaleString('ru-RU')} тыс. ₽</button>)}
                     </div>
                   )}
+                  {p.category === 'certificates' && <div className="xs muted" data-testid={`cert-limit-${p.id}`}>Не больше {certLimit(db)} {certLimit(db) === 1 ? 'сертификата' : 'сертификатов'} в месяц</div>}
                   <div className="row between mt-4" style={{ marginTop: 'auto' }}>
                     <Amount value={unitPrice(p, nominalOf(p))} ru={p.currency === 'rucoins'} />
                     {p.currency === 'rucoins' ? (p.stock === 0 ? <Badge tone="red">Мест нет</Badge>
                       : <Button size="sm" variant="orange" loading={busy === 'ru-' + p.id} disabled={u.rucoins < p.price} onClick={() => redeem(p)} aria-label={`Получить «${p.name}» за РуКоины`} data-testid={`redeem-${p.id}`}>{u.rucoins < p.price ? 'Не хватает' : 'Получить'}</Button>)
                       : locked ? <Badge><Lock size={12} />Питомец ур. {productLevel(p)}</Badge>
                       : p.stock === 0 ? <Badge tone="red">Нет в наличии</Badge>
+                      : p.category === 'certificates' && !inCart && certsThisMonth(db, u.id) + certsInCart(db, u.id) >= certLimit(db) ? <Badge tone="yellow">{certsThisMonth(db, u.id) >= certLimit(db) ? 'Лимит месяца' : 'Уже в корзине'}</Badge>
                       : <Button size="sm" variant={inCart ? 'soft' : 'primary'} icon={inCart ? Check : Plus} loading={busy === 'add-' + p.id} onClick={() => add(p)} aria-label={`Добавить «${p.name}» в корзину`}>{inCart ? `${inCart} в корзине` : 'В корзину'}</Button>}
                   </div>
                 </div>
@@ -150,13 +152,16 @@ function ProductModal({ p, onClose }: { p: Product; onClose: () => void }) {
             </>
           ) : locked ? (
             <div className="alert info small"><Lock size={16} /><span className="grow">Откроется на {productLevel(p)} уровне питомца ({PET_LEVELS[productLevel(p) - 1].title}). Сейчас у вас {petLevel(u.pet.xp)} уровень.</span><Button size="sm" variant="secondary" onClick={() => navigate('/cabinet/pet')}>К питомцу</Button></div>
-          ) : p.stock === 0 ? <div className="alert err small">Товар закончился</div> : (
+          ) : p.stock === 0 ? <div className="alert err small">Товар закончился</div>
+          : p.category === 'certificates' && certsThisMonth(db, u.id) >= certLimit(db) ? <div className="alert warn small">Лимит: {certLimit(db)} {certLimit(db) === 1 ? 'сертификат' : 'сертификата'} в месяц. В этом месяце он уже использован, следующий можно взять с 1 числа.</div>
+          : (
             <>
+              {p.category === 'certificates' && <div className="small muted">Не больше {certLimit(db)} {certLimit(db) === 1 ? 'сертификата' : 'сертификатов'} в месяц на сотрудника, любого номинала.</div>}
               <div className="row">
                 <div className="qty" aria-label="Количество">
                   <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Меньше"><Minus size={14} /></button>
                   <span className="num">{qty}</span>
-                  <button onClick={() => setQty(Math.min(p.stock, qty + 1))} aria-label="Больше"><Plus size={14} /></button>
+                  <button onClick={() => setQty(Math.min(p.category === 'certificates' ? Math.max(1, certLimit(db) - certsThisMonth(db, u.id)) : p.stock, qty + 1))} aria-label="Больше"><Plus size={14} /></button>
                 </div>
                 <span className="small muted">Итого: <b className="num">{fmt(price * qty)}</b></span>
               </div>
