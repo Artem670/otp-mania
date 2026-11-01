@@ -44,6 +44,28 @@ function checkCertLimit(db: DB, userId: string, adding: number) {
       : `Лимит: ${limit} ${word(limit)} в месяц на сотрудника. Сейчас можно взять ${left} ${word(left)}`);
   }
 }
+/** Разовое начисление по правилу (задания новичка, день рождения). Возвращает сумму или 0, если уже начисляли или правило выключено. */
+function grantOnce(d: DB, userId: string, ruleId: string, sinceTs = 0): number {
+  const rule = (d.settings.coinRules ?? COIN_RULES).find((r) => r.id === ruleId);
+  const x = d.users.find((u) => u.id === userId);
+  if (!rule || !(rule.amount > 0) || !x) return 0;
+  if (d.txs.some((t) => t.userId === userId && t.kind === 'bonus' && t.refId === ruleId && t.ts >= sinceTs)) return 0;
+  x.coins += rule.amount;
+  d.txs.push({ id: uid('tx'), ts: Date.now(), userId, kind: 'bonus', currency: 'coins', amount: rule.amount, title: rule.title, refId: rule.id });
+  notify(d, userId, `+${rule.amount.toLocaleString('ru-RU')} коинов: ${rule.title}`, '/cabinet/tasks');
+  return rule.amount;
+}
+/** Профиль заполнен целиком: фото, телефон, дата рождения, о себе. */
+export const profileComplete = (u: User) => !!(u.avatar && u.phone && u.birthday && u.about && u.about.trim().length >= 10);
+/** День рождения сегодня и в этом году ещё не поздравляли. */
+function birthdayBonus(d: DB, userId: string) {
+  const x = d.users.find((u) => u.id === userId);
+  if (!x?.birthday) return 0;
+  const now = new Date();
+  const md = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (x.birthday.slice(5) !== md) return 0;
+  return grantOnce(d, userId, 'r-birthday', new Date(now.getFullYear(), 0, 1).getTime());
+}
 const isPositiveInt = (n: number) => Number.isFinite(n) && n > 0 && Math.floor(n) === n;
 
 let recoveryPending = false;
@@ -69,19 +91,20 @@ async function enterLive() {
     await commit((d) => {
       d.users.push(newUser);
       notify(d, id, 'Добро пожаловать в ОТП Манию! Загляните к питомцу и в магазин', '/cabinet');
-      const first = (d.settings.coinRules ?? COIN_RULES).find((r) => r.id === 'r-first-login');
-      const nu = d.users.find((x) => x.id === id);
-      if (first && first.amount > 0 && nu) {
-        nu.coins += first.amount;
-        d.txs.push({ id: uid('tx'), ts: Date.now(), userId: id, kind: 'bonus', currency: 'coins', amount: first.amount, title: first.title, refId: first.id });
-        notify(d, id, `+${first.amount} коинов за первый вход на портал`, '/cabinet');
-      }
+      grantOnce(d, id, 'r-first-login');
       const m = d.departments.find((x) => x.id === deptId)?.managerId;
       if (m) notify(d, m, `В вашу команду добавлен новый сотрудник: ${newUser.name}`, '/manager/kpi');
     });
     u = newUser;
   }
   setLocal((d) => { d.sessionUserId = u!.id; });
+  // Задание «первый вход» для тех, кто зарегистрировался до появления заданий, и поздравление с днём рождения
+  const uid0 = u!.id;
+  const st = getState();
+  const needFirst = !st.txs.some((t) => t.userId === uid0 && t.refId === 'r-first-login');
+  if (needFirst || st.users.find((x) => x.id === uid0)?.birthday) {
+    try { await commit((d) => { grantOnce(d, uid0, 'r-first-login'); birthdayBonus(d, uid0); }); } catch { /* не критично для входа */ }
+  }
   return u!;
 }
 
@@ -127,7 +150,7 @@ export const api = {
     await wait();
     const u = getState().users.find((x) => x.email === e);
     if (!u || u.password !== password) throw new ApiError('Неверная почта или пароль', 'invalid_credentials', e.endsWith('@mania.demo') ? `У демо-аккаунтов пароль «${'demo'}». Или нажмите кнопку демо-входа ниже.` : 'Регистрация заработает после подключения базы данных. Пока войдите через демо ниже.');
-    await commit((db) => { db.sessionUserId = u!.id; touch(db, u!.id); });
+    await commit((db) => { db.sessionUserId = u!.id; touch(db, u!.id); birthdayBonus(db, u!.id); });
     return u!;
   },
   async register(input: { name: string; email: string; password: string; deptId: string; title: string }) {
@@ -222,6 +245,7 @@ export const api = {
     await commit((d) => {
       d.thanks.push({ id: uid('th'), ts: Date.now(), fromId: u.id, toId: to!.id, categoryId, message: msg });
       notify(d, to!.id, `${u.name} поблагодарил(а) вас: «${msg.slice(0, 60)}${msg.length > 60 ? '…' : ''}»`, '/cabinet/thanks');
+      grantOnce(d, u.id, 'r-first-thanks');
       touch(d, u.id);
     });
   },
@@ -262,7 +286,7 @@ export const api = {
       d.carts[u.id] = qty <= 0 ? lines.filter((l) => !same(l)) : lines.map((l) => (same(l) ? { ...l, qty } : l));
     });
   },
-  async checkout() {
+  async checkout(delivery: 'office' | 'cdek' = 'office') {
     await wait(500);
     const db = getState();
     const u = requireUser(db);
@@ -281,10 +305,10 @@ export const api = {
       const x = requireUser(d);
       x.coins -= cart.total;
       for (const l of cart.lines) { const p = d.products.find((y) => y.id === l.productId)!; p.stock -= l.qty; trackStock(p); }
-      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: cart.total, status: 'new', items: cart.lines.map((l) => ({ productId: l.productId, name: l.title, qty: l.qty, price: l.price, costRub: l.costRub })) });
+      d.orders.push({ id: orderId, ts: Date.now(), userId: x.id, total: cart.total, status: 'new', delivery, items: cart.lines.map((l) => ({ productId: l.productId, name: l.title, qty: l.qty, price: l.price, costRub: l.costRub })) });
       d.txs.push({ id: uid('tx'), ts: Date.now(), userId: x.id, kind: 'order', currency: 'coins', amount: -cart.total, title: `Заказ из ${cart.count} поз.`, refId: orderId });
       d.carts[x.id] = [];
-      notify(d, x.id, `Заказ оформлен: ${cart.total.toLocaleString('ru-RU')} коинов. Статус можно отслеживать в разделе «Заказы»`, '/cabinet/orders');
+      notify(d, x.id, `Заказ оформлен: ${cart.total.toLocaleString('ru-RU')} коинов.${delivery === 'cdek' ? ' Доставим через СДЭК, трек-номер придёт на почту.' : ''} Статус можно отслеживать в разделе «Заказы»`, '/cabinet/orders');
       touch(d, x.id);
     });
     return orderId;
@@ -367,6 +391,7 @@ export const api = {
       if (q === 'desire' && !d.orders.some((o) => o.id === refId && o.userId === u.id)) fail('Заказ не найден');
       if (d.pulses.some((p) => p.userId === u.id && p.refId === refId && p.q === q)) fail('Вы уже ответили на этот вопрос');
       d.pulses.push({ id: uid('pl'), ts: Date.now(), userId: u.id, q, score, refId });
+      grantOnce(d, u.id, 'r-first-pulse');
       touch(d, u.id);
     });
   },
@@ -573,7 +598,7 @@ export const api = {
     await wait(150);
     const n = name.trim();
     if (n.length < 2 || n.length > 20) fail('Имя от 2 до 20 символов');
-    await commit((d) => { requireUser(d).pet.name = n; });
+    await commit((d) => { const x = requireUser(d); const changed = x.pet.name !== n; x.pet.name = n; if (changed) grantOnce(d, x.id, 'r-pet-name'); });
   },
 
   /* ---------- Колесо удачи ---------- */
@@ -624,9 +649,35 @@ export const api = {
     if (!db.notifications.some((n) => n.userId === u.id && !n.read)) return;
     await commit((d) => d.notifications.forEach((n) => { if (n.userId === u.id) n.read = true; }));
   },
-  async updateProfile(patch: { avatar?: string }) {
+  async updateProfile(patch: { avatar?: string; phone?: string; birthday?: string; about?: string }) {
     await wait(200);
-    await commit((d) => { const x = requireUser(d); if (patch.avatar !== undefined) x.avatar = patch.avatar; });
+    if (patch.phone !== undefined && patch.phone.trim() && !/^\+?[\d\s()-]{10,18}$/.test(patch.phone.trim())) fail('Телефон в формате +7 900 000-00-00');
+    if (patch.birthday !== undefined && patch.birthday) {
+      const t = Date.parse(patch.birthday);
+      const age = (Date.now() - t) / (365.25 * 864e5);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.birthday) || Number.isNaN(t) || age < 16 || age > 90) fail('Проверьте дату рождения');
+    }
+    if (patch.about !== undefined && patch.about.trim().length > 300) fail('«О себе» не длиннее 300 символов');
+    let bonus = 0;
+    await commit((d) => {
+      const x = requireUser(d);
+      if (patch.avatar !== undefined) x.avatar = patch.avatar;
+      if (patch.phone !== undefined) x.phone = patch.phone.trim() || undefined;
+      if (patch.birthday !== undefined) x.birthday = patch.birthday || undefined;
+      if (patch.about !== undefined) x.about = patch.about.trim() || undefined;
+      if (profileComplete(x)) bonus = grantOnce(d, x.id, 'r-profile');
+      bonus += birthdayBonus(d, x.id);
+    });
+    return bonus;
+  },
+  /** Проверка автоматических начислений при входе: день рождения. */
+  async checkAutoBonuses() {
+    const db = getState();
+    const u = db.sessionUserId ? userById(db, db.sessionUserId) : undefined;
+    if (!u?.birthday) return 0;
+    let bonus = 0;
+    await commit((d) => { bonus = birthdayBonus(d, u.id); });
+    return bonus;
   },
 
   /* ---------- Администрирование ---------- */

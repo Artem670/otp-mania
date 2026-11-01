@@ -27,7 +27,7 @@ export default function Orders() {
         <Card key={o.id}>
           <div className="row between row-wrap">
             <div className="row-sm"><Package size={18} /><b>{o.wheel ? 'Приз из колеса удачи' : o.currency === 'rucoins' ? 'Награда за РуКоины' : 'Заказ'} от {fmtDateTime(o.ts)}</b></div>
-            <div className="row-sm"><Badge tone={STATUS_TONE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge><Amount value={o.total} ru={o.currency === 'rucoins'} /></div>
+            <div className="row-sm">{o.delivery === 'cdek' && <Badge>СДЭК</Badge>}<Badge tone={STATUS_TONE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge><Amount value={o.total} ru={o.currency === 'rucoins'} /></div>
           </div>
           <div className="mt-12">{o.items.map((i) => <div key={i.productId} className="row between small" style={{ padding: '6px 0' }}><span>{i.name} × {i.qty}</span><span className="num muted">{fmt(i.price * i.qty)}</span></div>)}</div>
           {o.status === 'delivered' && (

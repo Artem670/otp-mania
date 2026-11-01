@@ -9,6 +9,7 @@ import { ago, cx, fmt } from '../lib/utils';
 import { Avatar, Coin, ThemeToggle, useAction } from './ui';
 import { OtpLogo, TeamCredit } from './brand';
 import { SupportWidget } from './SupportWidget';
+import { openTasksCount } from '../pages/employee/Tasks';
 import { toggleTheme, useTheme } from '../lib/theme';
 import {
   Bell, BookOpen, Briefcase, Calendar, Cart, ChevronDown, Dashboard, LogOut, Menu, News, Reset, Search, Settings, ShieldAlert, Target, UserIcon, Users, X, Check,
@@ -18,13 +19,14 @@ import type { IconType } from 'react-icons';
 
 interface NavNode { label: string; to?: string; icon: IconType; roles?: Role[]; children?: { label: string; to: string; badge?: number }[] }
 
-export function useNav(me: User, signalCount: number): NavNode[] {
+export function useNav(me: User, signalCount: number, tasksLeft = 0): NavNode[] {
   return [
     { label: 'Новости', to: '/news', icon: News },
     { label: 'Мероприятия', to: '/events', icon: Calendar },
     {
       label: 'Кабинет сотрудника', icon: UserIcon, children: [
         { label: 'Профиль', to: '/cabinet' },
+        { label: 'Задания', to: '/cabinet/tasks', badge: tasksLeft || undefined },
         { label: 'Магазин', to: '/cabinet/shop' },
         { label: 'Мои заказы', to: '/cabinet/orders' },
         { label: 'Благодарности', to: '/cabinet/thanks' },
@@ -63,7 +65,7 @@ function Sidebar({ me, open, onNavigate }: { me: User; open: boolean; onNavigate
   const db = useDB();
   const { path, navigate } = useRouter();
   const sigCount = useMemo(() => (me.role === 'admin' ? signals(db).filter((s) => s.status === 'new').length : 0), [db, me.role]);
-  const nav = useNav(me, sigCount);
+  const nav = useNav(me, sigCount, openTasksCount(db, me.id));
   const isActive = (to: string) => path === to || (to !== '/cabinet' && to !== '/admin' && path.startsWith(to + '/'));
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const go = (to: string) => { navigate(to); onNavigate(); };

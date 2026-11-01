@@ -99,6 +99,23 @@ export function periodStart(p: Period, now = Date.now()) {
 export interface RatingRow { user: User; rucoins: number; thanks: number; score: number; place: number }
 export const THANKS_WEIGHT = 500;
 
+/** «Герой месяца»: больше всех баллов признания за прошлый календарный месяц (РуКоины + благодарности). */
+export function heroOfMonth(db: DB, now = Date.now()) {
+  const d = new Date(now);
+  const to = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const from = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+  const score = new Map<string, { ru: number; th: number }>();
+  const get = (id: string) => score.get(id) ?? (score.set(id, { ru: 0, th: 0 }), score.get(id)!);
+  for (const a of db.accruals) if (a.ts >= from && a.ts < to) get(a.employeeId).ru += a.amount;
+  for (const t of db.thanks) if (t.ts >= from && t.ts < to) get(t.toId).th += 1;
+  const best = [...score.entries()].map(([id, v]) => ({ id, ...v, total: v.ru + v.th * THANKS_WEIGHT })).sort((a, b) => b.total - a.total)[0];
+  const user = best && best.total > 0 ? db.users.find((u) => u.id === best.id) : undefined;
+  if (!user || !best) return null;
+  const quote = db.thanks.filter((t) => t.toId === user.id && t.ts >= from && t.ts < to).sort((a, b) => b.message.length - a.message.length)[0];
+  const month = new Date(from).toLocaleDateString('ru-RU', { month: 'long' });
+  return { user, rucoins: best.ru, thanks: best.th, score: best.total, quote, month };
+}
+
 export function rating(db: DB, opts: { deptId?: string; period: Period }): RatingRow[] {
   const from = periodStart(opts.period);
   const ru = new Map<string, number>();
@@ -393,7 +410,7 @@ export const PET_LEVELS = [
   { xp: 8000, title: 'Легенда', perk: 'Лимитированные дропы' },
 ];
 export const petLevel = (xp: number) => PET_LEVELS.reduce((l, L, i) => (xp >= L.xp ? i + 1 : l), 1);
-export const CATEGORY_LEVEL: Record<ProductCategory, number> = { perks: 1, charity: 1, merch: 1, experiences: 1, accessories: 2, clothes: 3, certificates: 4, electronics: 5 };
+export const CATEGORY_LEVEL: Record<ProductCategory, number> = { perks: 1, charity: 1, bank: 1, merch: 1, experiences: 1, accessories: 2, clothes: 3, certificates: 4, electronics: 5 };
 /** Лимитки за коины открываются на последнем уровне питомца. */
 export const productLevel = (p: Pick<Product, 'category' | 'minLevel'> & { limited?: boolean; currency?: Product['currency'] }) => p.minLevel ?? (p.limited && p.currency !== 'rucoins' ? 6 : CATEGORY_LEVEL[p.category]);
 export const isUnlocked = (p: Pick<Product, 'category' | 'minLevel'> & { limited?: boolean; currency?: Product['currency'] }, xp: number) => petLevel(xp) >= productLevel(p);

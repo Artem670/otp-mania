@@ -6,9 +6,11 @@ import type { Tx } from '../../data/types';
 import { useRouter, Link } from '../../lib/router';
 import { ago, fmt, fmtDate, fmtNum } from '../../lib/utils';
 import { Amount, Avatar, Badge, Button, Card, Coin, Empty, Field, Modal, PageSkeleton, Progress, Seg, Stat, useAction, usePageLoading, useToast } from '../../components/ui';
-import { Send, Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart } from '../../components/icons';
+import { Send, Sparkles, Convert, HandHeart, Award, Package, Paw, Trophy, Store, PiggyBank, Upload, ArrowRight, Receipt, Gift, Heart, Pencil } from '../../components/icons';
 import { SendThanksForm } from './Thanks';
 import { PulseCard } from '../../components/PulseCard';
+import { ProfileModal } from './Tasks';
+import { profileComplete } from '../../data/api';
 import { TransferModal } from '../../components/TransferModal';
 import { CharityBanner } from '../../components/CharityBanner';
 import type { IconType } from 'react-icons';
@@ -78,6 +80,7 @@ export default function Profile() {
   const loading = usePageLoading('profile');
   const { navigate } = useRouter();
   const [convert, setConvert] = useState(false);
+  const [editProfile, setEditProfile] = useState(false);
   const [transfer, setTransfer] = useState(false);
   const [thanks, setThanks] = useState(false);
   const [filter, setFilter] = useState<'all' | 'coins' | 'rucoins'>('all');
@@ -114,6 +117,7 @@ export default function Profile() {
         <div>
           <h1>{u.name}</h1>
           <div className="text-2 mt-4">{u.title} · {deptName(db, u.deptId)}</div>
+          {u.about && <div className="small mt-4" style={{ maxWidth: 520 }}>{u.about}</div>}
           <div className="row-sm row-wrap mt-8">
             <Badge tone="dark">{u.role === 'employee' ? 'Сотрудник' : u.role === 'manager' ? 'Руководитель' : 'Администратор'}</Badge>
             <Badge>В банке с {new Date(u.joinedAt).getFullYear()} года</Badge>
@@ -121,6 +125,7 @@ export default function Profile() {
           </div>
         </div>
         <div className="row-sm row-wrap">
+          <Button variant="secondary" icon={Pencil} onClick={() => setEditProfile(true)} data-testid="edit-profile">{profileComplete(u) ? 'Профиль' : 'Заполнить профиль'}</Button>
           <Button icon={Convert} onClick={() => setConvert(true)}>Конвертировать</Button>
           <Button variant="orange" icon={HandHeart} onClick={() => setThanks(true)}>Отправить благодарность</Button>
         </div>
@@ -188,6 +193,7 @@ export default function Profile() {
         </div>
       </div>
       <ConvertModal open={convert} onClose={() => setConvert(false)} />
+      {editProfile && <ProfileModal onClose={() => setEditProfile(false)} onSaved={(b) => { setEditProfile(false); if (b > 0) toast('success', `+${fmt(b)} коинов за заполненный профиль`); }} />}
       <TransferModal open={transfer} onClose={() => setTransfer(false)} />
       <SendThanksModal open={thanks} onClose={() => setThanks(false)} />
     </div>

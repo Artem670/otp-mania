@@ -5,7 +5,7 @@ import { DAY, mulberry32, quarterStart } from '../lib/utils';
 import { isUnlocked, lineTitle, pickPrize, unitCost, unitPrice } from './selectors';
 
 // Поднимайте номер при любом изменении стартовых данных: иначе у тех, кто уже открывал демо, останутся старые товары и статьи
-export const DB_VERSION = 14;
+export const DB_VERSION = 15;
 export const DEMO_PASSWORD = 'demo';
 
 export const DEMO_ACCOUNTS = {
@@ -147,6 +147,8 @@ export const PRODUCTS: Product[] = [
   { id: 'p-remote', name: 'Дополнительный день удалённой работы', category: 'perks', currency: 'rucoins', price: 4000, costRub: 0, stock: 999, active: true, description: 'Ещё один день из дома сверх графика. Дату согласуйте с руководителем.', icon: 'home', tone: '#FF6A13' },
   { id: 'p-lunch', limited: true, name: 'Обед с членом правления', category: 'perks', currency: 'rucoins', price: 40000, costRub: 0, stock: 4, active: true, description: 'Неформальная встреча, 4 места в квартал.', icon: 'utensils', tone: '#1F1F24' },
   { id: 'p-mentor', name: 'Встреча с наставником из другой функции', category: 'perks', currency: 'rucoins', price: 8000, costRub: 0, stock: 999, active: true, description: 'Час с опытным руководителем другого направления: карьера, проект, обратная связь.', icon: 'mentor', tone: '#3A3A42' },
+  { id: 'p-cashback-cat', name: 'Кэшбек 10% в любимой категории', category: 'bank', price: 5000, costRub: 200, stock: 9999, active: true, description: 'Месяц повышенного кэшбека по карте ОТП Банка в одной категории на выбор: кафе, такси, АЗС или супермаркеты. До 1 000 ₽ за месяц. Нужна дебетовая карта ОТП.', icon: 'card', tone: '#6E9E00' },
+  { id: 'p-cashback-all', name: 'Кэшбек 3% на все покупки', category: 'bank', price: 10000, costRub: 400, stock: 9999, active: true, description: 'Месяц повышенного кэшбека 3% на все покупки по карте ОТП Банка, до 2 000 ₽ за месяц. Подключается с 1 числа следующего месяца.', icon: 'card', tone: '#1F1F24' },
   { id: 'p-psy', name: 'Сессия с психологом', category: 'experiences', price: 20000, costRub: 3000, stock: 999, active: true, description: 'Онлайн-консультация 50 минут с психологом сервиса-партнёра. Содержание сессии остаётся между вами и психологом. Не чаще одной сессии в месяц.', icon: 'heart', tone: '#9E6FC3' },
 ];
 
@@ -155,14 +157,20 @@ export const PRODUCTS: Product[] = [
  * (спасибо растит рейтинг, профиль заполняется по умолчанию при выходе на работу). Добавлена годовщина в банке.
  */
 export const COIN_RULES: CoinRule[] = [
-  { id: 'r-first-login', title: 'Первый вход на портал', amount: 100, how: 'auto', once: true },
-  { id: 'r-birthday', title: 'День рождения', amount: 50, how: 'hr', note: 'раз в год' },
-  { id: 'r-survey', title: 'Участие в опросе', amount: 50, how: 'hr', note: 'за каждый корпоративный опрос' },
+  // Задания новичка: разово, начисляются сразу после выполнения
+  { id: 'r-first-login', title: 'Первый вход на портал', amount: 100, how: 'auto', once: true, onboarding: true },
+  { id: 'r-profile', title: 'Заполнить профиль: фото, телефон, дата рождения, о себе', amount: 300, how: 'auto', once: true, onboarding: true },
+  { id: 'r-first-thanks', title: 'Поблагодарить коллегу в первый раз', amount: 100, how: 'auto', once: true, onboarding: true },
+  { id: 'r-pet-name', title: 'Дать имя своему питомцу', amount: 100, how: 'auto', once: true, onboarding: true },
+  { id: 'r-first-pulse', title: 'Ответить на первый пульс-опрос', amount: 50, how: 'auto', once: true, onboarding: true },
+  // События: из HR-систем и LMS, в прототипе их проводит администратор
+  { id: 'r-birthday', title: 'День рождения', amount: 500, how: 'auto', note: 'раз в год, если дата указана в профиле' },
+  { id: 'r-survey', title: 'Участие в корпоративном опросе', amount: 100, how: 'hr', note: 'за каждый опрос' },
   { id: 'r-enps-1', title: 'Опрос eNPS в первый месяц работы', amount: 100, how: 'hr', once: true },
   { id: 'r-enps-3', title: 'Опрос eNPS в третий месяц работы', amount: 100, how: 'hr', once: true },
   { id: 'r-course-1', title: 'Назначенный курс или тест пройден в первый день', amount: 150, how: 'hr', note: 'за каждый курс' },
   { id: 'r-course-2', title: 'Назначенный курс или тест пройден во второй день', amount: 100, how: 'hr', note: 'за каждый курс' },
-  { id: 'r-probation', title: 'Прохождение испытательного срока', amount: 500, how: 'hr', once: true },
+  { id: 'r-probation', title: 'Прохождение испытательного срока', amount: 1000, how: 'hr', once: true },
   { id: 'r-anniversary', title: 'Годовщина работы в банке', amount: 1000, how: 'hr', note: 'за каждый год' },
   { id: 'r-mania', title: 'Участие в развитии ОТП Мании', amount: 2000, how: 'manual', once: true, note: 'например, тест новой версии' },
   { id: 'r-event', title: 'Корпоративное событие: хакатон, волонтёрство, спикер', amount: 500, how: 'manual', note: 'по решению организатора' },
@@ -503,6 +511,14 @@ export function createSeed(now = Date.now()): DB {
     if (r() < 0.6) give('r-course-1', START + r() * (now - START)); else give('r-course-2', START + r() * (now - START));
     if (r() < 0.25) give('r-birthday', START + r() * (now - START));
     if (r() < 0.2) give('r-anniversary', START + r() * (now - START));
+    const firstThanks = thanks.filter((t) => t.fromId === u.id).sort((a, b) => a.ts - b.ts).at(0);
+    if (firstThanks) give('r-first-thanks', firstThanks.ts);
+    if (u.id !== demo.id && r() < 0.7) { // профиль заполнен у большинства, кроме демо-сотрудника: это его первое задание
+      u.phone = `+7 9${String(10 + Math.floor(r() * 89))} ${String(100 + Math.floor(r() * 899))}-${String(10 + Math.floor(r() * 89))}-${String(10 + Math.floor(r() * 89))}`;
+      u.birthday = `${1975 + Math.floor(r() * 28)}-${String(1 + Math.floor(r() * 12)).padStart(2, '0')}-${String(1 + Math.floor(r() * 28)).padStart(2, '0')}`;
+      u.about = pick(r, ['Люблю данные и хорошие дашборды', 'Бегаю по выходным, ищу компанию на полумарафон', 'Отвечаю за процессы и кофе на этаже', 'Наставник для новичков отдела', 'Играю в настолки, зову всех']);
+      give('r-profile', START + r() * (now - START));
+    }
   }
 
   // Остатки из прошлой версии программы (накоп)

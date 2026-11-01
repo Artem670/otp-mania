@@ -27,6 +27,7 @@ import Dashboard from './pages/admin/Dashboard';
 import Signals from './pages/admin/Signals';
 import UsersAdmin from './pages/admin/Users';
 import CoinsAdmin from './pages/admin/Coins';
+import TasksPage from './pages/employee/Tasks';
 import SettingsPage from './pages/admin/Settings';
 import MetricsPage from './pages/admin/Metrics';
 import { NewsPage, EventsPage, StrategyPage, KbPage } from './pages/portal/Portal';
@@ -48,6 +49,7 @@ const ROUTES: R[] = [
   { pattern: '/cabinet/cart', render: () => <CartPage /> },
   { pattern: '/cabinet/orders', render: () => <Orders /> },
   { pattern: '/cabinet/thanks', render: () => <ThanksPage /> },
+  { pattern: '/cabinet/tasks', render: () => <TasksPage /> },
   { pattern: '/cabinet/rating', render: () => <Rating /> },
   { pattern: '/cabinet/pools', render: () => <Pools /> },
   { pattern: '/cabinet/charity', render: () => <Charity /> },

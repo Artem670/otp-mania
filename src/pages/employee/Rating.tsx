@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useDB } from '../../data/store';
-import { deptName, me as selectMe, PERIOD_LABELS, rating, THANKS_WEIGHT, type Period, type RatingRow } from '../../data/selectors';
-import { fmt } from '../../lib/utils';
-import { Avatar, Card, Coin, Empty, PageHeader, PageSkeleton, Seg, Stat, usePageLoading } from '../../components/ui';
+import { deptName, me as selectMe, PERIOD_LABELS, rating, THANKS_WEIGHT, type Period, type RatingRow , heroOfMonth, deptName as deptNameH } from '../../data/selectors';
+import { fmt , plural } from '../../lib/utils';
+import { Badge, Avatar, Card, Coin, Empty, PageHeader, PageSkeleton, Seg, Stat, usePageLoading } from '../../components/ui';
 import { Crown, Heart, Trophy, Info } from '../../components/icons';
 import { useRouter } from '../../lib/router';
 
@@ -15,6 +15,7 @@ export default function Rating() {
   const loading = usePageLoading('rating:' + period + dept, 250);
   const rows = useMemo(() => rating(db, { period, deptId: dept }), [db, period, dept]);
   const mine = rows.find((r) => r.user.id === u.id);
+  const hero = useMemo(() => heroOfMonth(db), [db]);
   const top = rows.slice(0, 10);
   const scored = rows.filter((r) => r.score > 0);
 
@@ -39,6 +40,21 @@ export default function Rating() {
           </select>
           <Seg value={period} onChange={setPeriod} ariaLabel="Период" options={(Object.keys(PERIOD_LABELS) as Period[]).map((p) => ({ value: p, label: PERIOD_LABELS[p] }))} />
         </>} />
+      {hero && (
+        <div className="card hero-month" data-testid="hero-month">
+          <Avatar user={hero.user} size={64} />
+          <div className="grow" style={{ minWidth: 0 }}>
+            <Badge tone="orange">Герой месяца · {hero.month}</Badge>
+            <div className="strong mt-8" style={{ fontSize: 20 }}>{hero.user.name}</div>
+            <div className="small text-2">{hero.user.title} · {deptNameH(db, hero.user.deptId)}</div>
+            {hero.quote && <div className="small mt-8" style={{ fontStyle: 'italic' }}>«{hero.quote.message}»</div>}
+          </div>
+          <div className="hero-month-stats">
+            <div><b className="num">{hero.rucoins.toLocaleString('ru-RU')}</b><span className="xs muted">РуКоинов</span></div>
+            <div><b className="num">{hero.thanks}</b><span className="xs muted">{plural(hero.thanks, 'благодарность', 'благодарности', 'благодарностей')}</span></div>
+          </div>
+        </div>
+      )}
       {loading ? <PageSkeleton /> : !scored.length ? (
         <div className="card"><Empty icon={Trophy} title="За этот период пока нет признания" text="Выберите другой период или подразделение." /></div>
       ) : (

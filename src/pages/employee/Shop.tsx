@@ -48,7 +48,7 @@ export default function Shop({ productId, initialCat }: { productId?: string; in
 
   return (
     <div className="stack-24">
-      <PageHeader title="Магазин" subtitle={<>Ваш баланс: <Amount value={u.coins} /> и <Amount value={u.rucoins} ru />. Нематериальные награды получают за РуКоины. Электронные сертификаты приходят на почту, физические товары выдаются в офисе.</>}
+      <PageHeader title="Магазин" subtitle={<>Ваш баланс: <Amount value={u.coins} /> и <Amount value={u.rucoins} ru />. Нематериальные награды получают за РуКоины. Сертификаты приходят на почту, товары можно забрать в офисе или получить через СДЭК.</>}
         actions={<Button variant="secondary" icon={Cart} onClick={() => navigate('/cabinet/cart')}>Корзина{cart.length ? ` · ${cart.reduce((a, l) => a + l.qty, 0)}` : ''}</Button>} />
       <PetShopBanner />
       <div className="row row-wrap between" style={{ gap: 12 }}>

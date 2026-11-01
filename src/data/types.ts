@@ -28,6 +28,9 @@ export interface User {
   rucoins: number;
   color: string;
   avatar?: string;
+  phone?: string;
+  birthday?: string; // ГГГГ-ММ-ДД
+  about?: string;
   joinedAt: number;
   lastActiveAt: number;
   pet: Pet;
@@ -93,6 +96,7 @@ export type ProductCategory =
   | 'merch'
   | 'experiences'
   | 'charity'
+  | 'bank'
   | 'perks';
 
 export interface Product {
@@ -133,6 +137,7 @@ export interface Order {
   csi?: number;
   wheel?: boolean; // приз из колеса удачи
   currency?: Currency; // списанная валюта, по умолчанию коины
+  delivery?: 'office' | 'cdek';
 }
 
 export interface PoolContribution {
@@ -294,7 +299,7 @@ export interface Ticket {
 }
 
 /** Правило начисления коинов за событие. how: auto начисляется системой, hr по данным HR-систем, manual вручную администратором. */
-export interface CoinRule { id: string; title: string; amount: number; how: 'auto' | 'hr' | 'manual'; once?: boolean; note?: string }
+export interface CoinRule { id: string; title: string; amount: number; how: 'auto' | 'hr' | 'manual'; once?: boolean; note?: string; onboarding?: boolean }
 
 export interface DB {
   version: number;
@@ -329,6 +334,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   merch: 'Мерч компании',
   experiences: 'Забота о себе',
   charity: 'Благотворительность',
+  bank: 'Кэшбек ОТП',
   perks: 'За РуКоины',
 };
 

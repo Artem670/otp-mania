@@ -17,6 +17,7 @@ export default function CartPage() {
   const { run, busy } = useAction();
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<'office' | 'cdek'>('office');
   const enough = u.coins >= total;
 
   if (loading) return <PageSkeleton />;
@@ -31,9 +32,10 @@ export default function CartPage() {
     );
   }
 
+  const physical = lines.some((l) => !['certificates', 'bank', 'charity', 'experiences'].includes(l.product.category));
   const setQty = (id: string, q: number, nominal?: number) => run('q-' + id + (nominal ?? ''), () => api.setCartQty(id, q, nominal));
   const checkout = async () => {
-    const id = await run('checkout', () => api.checkout());
+    const id = await run('checkout', () => api.checkout(physical ? delivery : 'office'));
     setConfirm(false);
     if (id) setDone(id);
   };
@@ -72,11 +74,20 @@ export default function CartPage() {
                 <div className="row between" style={{ paddingTop: 10, borderTop: '1px solid var(--border)' }}><b>Итого</b><span className="price" style={{ fontSize: 22 }}>{fmt(total)} <Coin /></span></div>
                 <div className="row between small"><span className="muted">Останется после покупки</span><span className="num" style={{ color: enough ? undefined : 'var(--red)' }}>{fmt(u.coins - total)}</span></div>
               </div>
+              {physical && (
+                <div className="mt-16" role="radiogroup" aria-label="Получение">
+                  <div className="small strong">Получение</div>
+                  <div className="col mt-8" style={{ gap: 6 }}>
+                    <label className="row-sm small" style={{ cursor: 'pointer' }}><input type="radio" name="delivery" checked={delivery === 'office'} onChange={() => setDelivery('office')} data-testid="delivery-office" />В офисе, у администратора программы</label>
+                    <label className="row-sm small" style={{ cursor: 'pointer' }}><input type="radio" name="delivery" checked={delivery === 'cdek'} onChange={() => setDelivery('cdek')} data-testid="delivery-cdek" />СДЭК: пункт выдачи в вашем городе, бесплатно</label>
+                  </div>
+                </div>
+              )}
               {!enough && <div className="alert err small mt-16"><Alert size={16} />Не хватает {fmt(total - u.coins)} коинов. Конвертируйте РуКоины в профиле или уберите часть товаров.</div>}
               <Button block size="lg" className="mt-16" disabled={!enough} onClick={() => setConfirm(true)} data-testid="checkout">Оформить заказ</Button>
               <Button block variant="ghost" className="mt-8" onClick={() => navigate('/cabinet/shop')}>Продолжить покупки</Button>
             </Card>
-            <div className="alert small">Электронные сертификаты приходят на почту в течение часа. Остальные товары выдаются в офисе, статус видно в разделе «Мои заказы».</div>
+            <div className="alert small">Электронные сертификаты приходят на почту в течение часа. Кэшбек подключается с 1 числа следующего месяца. Товары можно забрать в офисе или получить через СДЭК в любом городе, статус видно в разделе «Мои заказы».</div>
           </div>
         </div>
       )}

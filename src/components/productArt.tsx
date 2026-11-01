@@ -85,9 +85,31 @@ function Print({ x, y, r, src = face, ring = '#fff' }: { x: number; y: number; r
     </g>
   );
 }
+/** Банковская карта с процентом кэшбека. */
+function Cashback({ tone, big, small }: { tone: string; big: string; small: string }) {
+  return (
+    <g>
+      <g transform="rotate(-8 100 104)">
+        <rect x="34" y="58" width="132" height="86" rx="12" fill={INK} opacity=".18" transform="translate(6 8)" />
+        <rect x="34" y="58" width="132" height="86" rx="12" fill={tone} />
+        <Shine d="M34 70 Q34 58 46 58 H166 V82 Q110 94 34 90 Z" o={0.16} />
+        <rect x="48" y="84" width="22" height="16" rx="3" fill="#e9d48a" />
+        <path d="M48 92 H70 M59 84 V100" stroke="#b89c45" strokeWidth="1" />
+        <Mark x={150} y={76} r={7} c="#fff" />
+        <text x="48" y="130" fontSize="10" fontWeight="600" fill="#fff" opacity=".85" letterSpacing="2">•••• 2026</text>
+      </g>
+      <circle cx="148" cy="138" r="30" fill={LIME} />
+      <text x="148" y="140" textAnchor="middle" fontSize="17" fontWeight="800" fill={INK}>{big}</text>
+      <text x="148" y="154" textAnchor="middle" fontSize="7.5" fontWeight="700" fill={INK}>{small}</text>
+    </g>
+  );
+}
 const rubles = (n = 1000) => `${n.toLocaleString('ru-RU')} ₽`;
 const bagEmblem = <g><path d="M0 4 H22 L20 24 H2 Z" fill="#fff" opacity=".9" /><path d="M6 6 Q6 -4 11 -4 Q16 -4 16 6" stroke="#fff" strokeWidth="2.5" fill="none" /></g>;
 const ART: Record<string, (tone: string, nominal?: number) => ReactNode> = {
+  'p-cashback-cat': (t) => <Cashback tone={t} big="10%" small="в категории" />,
+  'p-cashback-all': (t) => <Cashback tone={t} big="3%" small="на всё" />,
+
   'p-hoodie': (t) => (
     <g>
       <path d="M70 52 Q100 30 130 52 L156 64 Q170 70 172 86 L178 140 Q178 148 170 148 L158 148 L152 104 L150 160 Q150 168 142 168 H58 Q50 168 50 160 L48 104 L42 148 L30 148 Q22 148 22 140 L28 86 Q30 70 44 64 Z" fill={t} />
@@ -415,7 +437,7 @@ const BY_ICON: Record<string, string> = {
   shirt: 'p-tee', snowflake: 'p-beanie', coffee: 'p-mug', backpack: 'p-backpack', umbrella: 'p-umbrella', shoppingbag: 'p-shopper',
   headphones: 'p-headphones', battery: 'p-powerbank', speaker: 'p-speaker', watch: 'p-watch', gift: 'p-cert-ozon', dumbbell: 'p-cert-sport',
   book: 'p-cert-books', film: 'p-cert-cinema', sticker: 'p-stickers', notebook: 'p-notebook', paw: 'p-pet', heart: 'p-don-bereginya',
-  palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-psy', brain: 'p-psy', mountain: 'p-psy',
+  palm: 'p-dayoff', clock: 'p-late', home: 'p-remote', mentor: 'p-mentor', utensils: 'p-lunch', sparkles: 'p-psy', card: 'p-cashback-cat', brain: 'p-psy', mountain: 'p-psy',
 };
 
 export function ProductIllustration({ id, icon, tone, nominal }: { id?: string; icon: string; tone: string; nominal?: number }) {

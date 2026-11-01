@@ -184,7 +184,7 @@ async function migrate(db: DB) {
     });
   }
   // База знаний: новые статьи по всем механикам (пишет только администратор)
-  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || !db.articles.some((a) => a.body.includes('Лимит на сертификаты')) || !db.articles.some((a) => a.body.includes('{{coinRules}}')) || db.articles.some((a) => /не стоит банку|Что считает программа|Легенда \(20 000\)|Впечатлени/.test(a.body))) {
+  if (!db.articles.some((a) => a.id === 'kb10') || db.articles.some((a) => doubled(a.body)) || !db.articles.some((a) => a.body.includes('{{transferLimit}}')) || !db.articles.some((a) => a.body.includes('Лимит на сертификаты')) || !db.articles.some((a) => a.body.includes('разделе «Задания»')) || db.articles.some((a) => /не стоит банку|Что считает программа|Легенда \(20 000\)|Впечатлени/.test(a.body))) {
     await tryUpsert(ARTICLES.map((a) => ({ collection: 'articles', id: a.id, data: a })), () => { db.articles = [...ARTICLES]; });
   }
   // Пересчёт цен (версия 13): цена = розница аналога × 5, себестоимость = закупка тиражом. Трогаем только цены, которые админ не менял.
@@ -200,6 +200,12 @@ async function migrate(db: DB) {
       return f && OLD_PRICES[p.id] === p.price ? [{ ...p, name: f.name, price: f.price, costRub: f.costRub, description: f.description }] : [];
     });
     await tryUpsert(repriced.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { repriced.forEach((p) => { db.products[db.products.findIndex((x) => x.id === p.id)] = p; }); });
+  }
+  // Кэшбек по карте ОТП в магазине (версия 15)
+  if (db.products.some((p) => p.id === 'p-cert-ozon') && !db.products.some((p) => p.category === 'bank')) {
+    const fresh = createSeed(now);
+    const bank = fresh.products.filter((p) => p.category === 'bank');
+    await tryUpsert(bank.map((p) => ({ collection: 'products', id: p.id, data: p })), () => { db.products.push(...bank); });
   }
   // Психолог вместо мастер-класса, горнолыжный выезд снят с продажи
   if (!db.products.some((p) => p.id === 'p-psy') || db.products.some((p) => (p.id === 'p-masterclass' || p.id === 'p-ski') && p.active)) {

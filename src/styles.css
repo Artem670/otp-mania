@@ -661,3 +661,16 @@ body:has(.support-panel) .toasts { right: 408px; }
 @media (max-width: 560px) { body:has(.support-panel) .toasts { right: 12px; bottom: auto; top: 72px; } }
 @media (max-width: 400px) { .topbar { gap: 6px; padding: 0 10px; } .balance-chip { padding: 0 8px; } }
 .product-photo-nominal { display: none; } .product-img .product-photo-nominal { display: inline-block; }
+
+/* ---------- Задания ---------- */
+.task-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; flex-wrap: wrap; }
+.task-row.done { background: var(--surface); }
+.task-row.done .strong { color: var(--text-2); }
+.task-action { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) { .task-action { width: 100%; } .task-action form { width: 100%; } .task-action .input { flex: 1; width: auto !important; } }
+
+.hero-month { display: flex; align-items: center; gap: 18px; background: linear-gradient(120deg, #f4ffd2 0%, var(--card) 70%); flex-wrap: wrap; }
+.hero-month-stats { display: flex; gap: 20px; }
+.hero-month-stats > div { display: flex; flex-direction: column; align-items: flex-end; }
+.hero-month-stats b { font-size: 20px; }
+[data-theme=dark] .hero-month { background: linear-gradient(120deg, #2b3312 0%, var(--card) 70%); }
