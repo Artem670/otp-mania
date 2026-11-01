@@ -224,6 +224,11 @@ async function migrate(db: DB) {
     const settings = { ...db.settings, wheelPrizes: prizes };
     await tryUpsert([{ collection: 'settings', id: 'main', data: settings }], () => { db.settings = settings; });
   }
+  // Названия джекпотов без повтора слова «Джекпот» (бейдж уже показывает это)
+  if (db.settings.wheelPrizes?.some((w) => w.name.startsWith('Джекпот: '))) {
+    const settings = { ...db.settings, wheelPrizes: db.settings.wheelPrizes.map((w) => (w.name.startsWith('Джекпот: ') ? { ...w, name: w.name.slice(9, 10).toUpperCase() + w.name.slice(10) } : w)) };
+    await tryUpsert([{ collection: 'settings', id: 'main', data: settings }], () => { db.settings = settings; });
+  }
   if (!db.settings.accrualCategories.some((c) => c.formal)) {
     const formal = ACCRUAL_CATEGORIES.filter((c) => c.formal);
     const settings = { ...db.settings, accrualCategories: [...db.settings.accrualCategories, ...formal] };
